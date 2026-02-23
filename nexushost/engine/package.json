@@ -1,0 +1,21 @@
+{
+    "name": "nexushost-engine",
+    "version": "1.0.0",
+    "description": "NexusHost Phase I Engine - Stats Collector",
+    "main": "dist/index.js",
+    "scripts": {
+        "dev": "ts-node src/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js"
+    },
+    "dependencies": {
+        "dotenv": "^16.4.5",
+        "socket.io-client": "^4.7.5",
+        "systeminformation": "^5.22.7"
+    },
+    "devDependencies": {
+        "@types/node": "^20.12.7",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.4.5"
+    }
+}
