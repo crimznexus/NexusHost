@@ -60,13 +60,60 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('HEARTBEAT', payload);
     });
 
-    socket.on('TEST_START', () => {
-        // Relay command logic
+    socket.on('START_SERVER', () => {
         if (engineSocketId) {
-            process.stdout.write(`[HUB] Relaying TEST_START to Engine\n`);
-            io.to(engineSocketId).emit('TEST_START');
+            process.stdout.write(`[HUB] Relaying START_SERVER to Engine\n`);
+            io.to(engineSocketId).emit('START_SERVER');
         } else {
-            socket.emit('HUB_ERROR', { message: 'Engine offline - command failed' });
+            socket.emit('HUB_ERROR', { message: 'Engine offline - cannot start server' });
+        }
+    });
+
+    socket.on('STOP_SERVER', () => {
+        if (engineSocketId) {
+            process.stdout.write(`[HUB] Relaying STOP_SERVER to Engine\n`);
+            io.to(engineSocketId).emit('STOP_SERVER');
+        } else {
+            socket.emit('HUB_ERROR', { message: 'Engine offline - cannot stop server' });
+        }
+    });
+
+    socket.on('SERVER_STATE', (payload) => {
+        // Relay state from Engine to all Dashboards
+        if (socket.id === engineSocketId) {
+            socket.broadcast.emit('SERVER_STATE', payload);
+        }
+    });
+
+    socket.on('ERROR', (payload) => {
+        // Relay engine error as Hub Error to all Dashboards
+        if (socket.id === engineSocketId) {
+            socket.broadcast.emit('HUB_ERROR', payload);
+        }
+    });
+
+    socket.on('TUNNEL_URL', (payload) => {
+        // Relay tunnel URL from Engine to all Dashboards
+        if (socket.id === engineSocketId) {
+            process.stdout.write(`[HUB] Relaying TUNNEL_URL: ${payload.url}\n`);
+            socket.broadcast.emit('TUNNEL_URL', payload);
+        }
+    });
+
+    socket.on('SERVER_LOG', (payload) => {
+        // Relay console log from Engine to all Dashboards
+        if (socket.id === engineSocketId) {
+            socket.broadcast.emit('SERVER_LOG', payload);
+        }
+    });
+
+    socket.on('SEND_COMMAND', (payload) => {
+        // Relay command from Dashboard to Engine
+        if (engineSocketId) {
+            process.stdout.write(`[HUB] Relaying SEND_COMMAND: ${payload.command}\n`);
+            io.to(engineSocketId).emit('SEND_COMMAND', payload);
+        } else {
+            socket.emit('HUB_ERROR', { message: 'Engine offline - cannot send command' });
         }
     });
 
@@ -75,6 +122,8 @@ io.on('connection', (socket) => {
             process.stdout.write(`[HUB] Engine disconnected: ${socket.id}\n`);
             engineSocketId = null;
             io.emit('ENGINE_STATUS', { online: false });
+            // Also broadcast that the server is effectively offline
+            io.emit('SERVER_STATE', { state: 'offline' });
         }
     });
 });

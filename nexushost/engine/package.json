@@ -9,11 +9,13 @@
         "start": "node dist/index.js"
     },
     "dependencies": {
+        "dockerode": "^4.0.9",
         "dotenv": "^16.4.5",
         "socket.io-client": "^4.7.5",
         "systeminformation": "^5.22.7"
     },
     "devDependencies": {
+        "@types/dockerode": "^4.0.1",
         "@types/node": "^20.12.7",
         "ts-node": "^10.9.2",
         "typescript": "^5.4.5"

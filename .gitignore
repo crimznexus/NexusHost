@@ -7,3 +7,9 @@ dist/
 build/
 .next/
 out/
+playit.exe
+playit.secret
+cloudflared.exe
+mc-data/
+*.jfr
+*.tmp
