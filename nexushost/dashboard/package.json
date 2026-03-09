@@ -1,26 +1,44 @@
 {
     "name": "nexushost-dashboard",
     "private": true,
-    "version": "0.0.0",
+    "version": "1.0.0",
+    "description": "Nexus Client - Zero Config MC Joiner",
+    "author": "NexusHost",
     "type": "module",
+    "main": "main.js",
     "scripts": {
         "dev": "vite",
         "build": "tsc && vite build",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "electron:dev": "npx concurrently \"vite\" \"npx electron .\"",
+        "electron:build": "npm run build && npx electron-builder"
+    },
+    "build": {
+        "appId": "com.nexushost.client",
+        "productName": "Nexus Client",
+        "win": {
+            "target": "portable"
+        },
+        "directories": {
+            "output": "build"
+        }
     },
     "dependencies": {
+        "@types/uuid": "^10.0.0",
+        "clsx": "^2.1.1",
         "lucide-react": "^0.378.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
         "socket.io-client": "^4.7.5",
-        "clsx": "^2.1.1",
-        "tailwind-merge": "^2.3.0"
+        "tailwind-merge": "^2.3.0",
+        "uuid": "^13.0.0"
     },
     "devDependencies": {
         "@types/react": "^19.0.0",
         "@types/react-dom": "^19.0.0",
         "@vitejs/plugin-react": "^4.2.1",
         "autoprefixer": "^10.4.19",
+        "electron": "^40.8.0",
         "postcss": "^8.4.38",
         "tailwindcss": "^3.4.3",
         "typescript": "^5.4.5",

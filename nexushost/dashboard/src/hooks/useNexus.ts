@@ -1,9 +1,13 @@
 // nexushost/dashboard/src/hooks/useNexus.ts – NexusHost Dashboard
-import { useEffect, useState, useCallback } from 'react';
-import { socket } from '../lib/socket.js';
-import { HeartbeatPayload, ServerState } from '../types.js';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { HeartbeatPayload, ServerState, ClientToServerEvents, ServerToClientEvents } from '../types.js';
+
+// @ts-ignore - Vite specific
+const DEFAULT_URL = import.meta.env?.VITE_HUB_URL || 'http://localhost:3001';
 
 export const useNexus = () => {
+    const [socket, setSocket] = useState<Socket<ServerToClientEvents, ClientToServerEvents>>(() => io(DEFAULT_URL));
     const [isOnline, setIsOnline] = useState(false);
     const [serverState, setServerState] = useState<ServerState>('offline');
     const [publicAddress, setPublicAddress] = useState<string | null>(null);
@@ -11,8 +15,32 @@ export const useNexus = () => {
     const [logs, setLogs] = useState<string[]>([]);
     const [onlinePlayers, setOnlinePlayers] = useState(0);
     const [error, setError] = useState<string | null>(null);
+    const [role, setRole] = useState<'host' | 'friend' | null>(null);
+    const [joinId, setJoinId] = useState<string>('');
+
+    // Persistence ref for role to avoid resets on socket change
+    const roleRef = useRef<'host' | 'friend' | null>(null);
+
+    const connectToHub = useCallback((url: string) => {
+        if (!url) return;
+
+        // Normalize URL (add protocol if missing)
+        let normalizedUrl = url;
+        if (!url.startsWith('http')) {
+            normalizedUrl = `http://${url}`;
+        }
+
+        console.log(`[useNexus] Switching Hub to: ${normalizedUrl}`);
+
+        setSocket(prev => {
+            if (prev) prev.disconnect();
+            return io(normalizedUrl);
+        });
+    }, []);
 
     useEffect(() => {
+        if (!socket) return;
+
         socket.emit('DASHBOARD_CONNECT');
 
         socket.on('ENGINE_STATUS', ({ online }) => {
@@ -56,6 +84,10 @@ export const useNexus = () => {
             setError(message);
         });
 
+        socket.on('NEXUS_ID', ({ id }) => {
+            setJoinId(id);
+        });
+
         return () => {
             socket.off('ENGINE_STATUS');
             socket.off('HEARTBEAT');
@@ -63,22 +95,23 @@ export const useNexus = () => {
             socket.off('TUNNEL_URL');
             socket.off('SERVER_LOG');
             socket.off('HUB_ERROR');
+            socket.off('NEXUS_ID');
         };
-    }, []);
+    }, [socket]);
 
     const startServer = useCallback(() => {
         setError(null);
         socket.emit('START_SERVER');
-    }, []);
+    }, [socket]);
 
     const stopServer = useCallback(() => {
         setError(null);
         socket.emit('STOP_SERVER');
-    }, []);
+    }, [socket]);
 
     const sendCommand = useCallback((command: string) => {
         socket.emit('SEND_COMMAND', { command });
-    }, []);
+    }, [socket]);
 
     return {
         isOnline,
@@ -88,6 +121,13 @@ export const useNexus = () => {
         logs,
         onlinePlayers,
         error,
+        role,
+        joinId,
+        setRole: (newRole: 'host' | 'friend' | null) => {
+            roleRef.current = newRole;
+            setRole(newRole);
+        },
+        connectToHub,
         startServer,
         stopServer,
         sendCommand

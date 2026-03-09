@@ -10,6 +10,8 @@ import {
     InterServerEvents,
     SocketData
 } from './types.js';
+import { RelayService } from './RelayService.js';
+import https from 'https';
 
 dotenv.config();
 
@@ -29,17 +31,49 @@ const io = new Server<
     }
 });
 
+let relayService: RelayService;
+try {
+    relayService = new RelayService(io, () => engineSocketId);
+    relayService.start(25565);
+} catch (e: any) {
+    console.log(`[HUB] Relay Startup Error: ${e.message}`);
+}
+
 let engineSocketId: string | null = null;
+let vpsPublicIp: string | null = null;
+
+async function getVpsIp(): Promise<string> {
+    return new Promise((resolve, reject) => {
+        https.get('https://api.ipify.org', (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => resolve(data));
+        }).on('error', reject);
+    });
+}
+
+// Initial IP Detection
+getVpsIp().then(ip => {
+    vpsPublicIp = ip;
+    process.stdout.write(`[HUB] VPS Public IP detected: ${ip}\n`);
+}).catch(err => {
+    process.stdout.write(`[HUB] Failed to detect VPS IP: ${err.message}\n`);
+});
 
 io.on('connection', (socket) => {
     // Log connection without using console.log directly
-    process.stdout.write(`[HUB] New connection: ${socket.id}\n`);
+    console.log(`[HUB] New connection: ${socket.id}`);
 
     socket.on('ENGINE_CONNECT', () => {
         engineSocketId = socket.id;
         socket.data.type = 'engine';
         process.stdout.write(`[HUB] Engine registered: ${socket.id}\n`);
         io.emit('ENGINE_STATUS', { online: true });
+
+        // If we have a VPS IP, inform everyone that the relay is ready
+        if (vpsPublicIp) {
+            io.emit('TUNNEL_URL', { url: `${vpsPublicIp}:25565` });
+        }
     });
 
     socket.on('DASHBOARD_CONNECT', () => {
@@ -47,6 +81,9 @@ io.on('connection', (socket) => {
         process.stdout.write(`[HUB] Dashboard registered: ${socket.id}\n`);
         // Immediately inform dashboard of current engine status
         socket.emit('ENGINE_STATUS', { online: engineSocketId !== null });
+
+        // Provide the Dashboard with the Hub's identity (NEXUS-ID)
+        socket.emit('NEXUS_ID', { id: vpsPublicIp ? `http://${vpsPublicIp}:${PORT}` : 'Local Dev' });
     });
 
     socket.on('HEARTBEAT', (payload) => {
@@ -114,6 +151,18 @@ io.on('connection', (socket) => {
             io.to(engineSocketId).emit('SEND_COMMAND', payload);
         } else {
             socket.emit('HUB_ERROR', { message: 'Engine offline - cannot send command' });
+        }
+    });
+
+    socket.on('RELAY_DATA_TO_CLIENT', (payload) => {
+        if (socket.id === engineSocketId) {
+            relayService.handleDataFromEngine(payload.sessionId, payload.data);
+        }
+    });
+
+    socket.on('RELAY_SESSION_CLOSE', (payload) => {
+        if (socket.id === engineSocketId) {
+            relayService.handleSessionCloseFromEngine(payload.sessionId);
         }
     });
 
