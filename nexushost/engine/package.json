@@ -1,22 +1,40 @@
 {
     "name": "nexushost-engine",
     "version": "1.0.0",
+    "type": "module",
     "description": "NexusHost Phase I Engine - Stats Collector",
-    "main": "dist/index.js",
+    "bin": "dist/index.js",
     "scripts": {
-        "dev": "ts-node src/index.ts",
+        "dev": "node --loader ts-node/esm src/index.ts",
         "build": "tsc",
-        "start": "node dist/index.js"
+        "start": "node dist/index.js",
+        "pkg:build": "npm run build && npx pkg . --targets node18-win-x64 --output nexus-server.exe"
+    },
+    "pkg": {
+        "assets": [
+            "dist/**/*",
+            "../dashboard/dist/**/*"
+        ]
     },
     "dependencies": {
+        "@types/localtunnel": "^2.0.4",
+        "@types/nat-upnp": "^1.1.5",
+        "@types/uuid": "^10.0.0",
         "dockerode": "^4.0.9",
         "dotenv": "^16.4.5",
+        "localtunnel": "^2.0.2",
+        "nat-upnp": "^1.1.1",
+        "socket.io": "^4.8.3",
         "socket.io-client": "^4.7.5",
-        "systeminformation": "^5.22.7"
+        "systeminformation": "^5.22.7",
+        "uuid": "^13.0.0"
     },
     "devDependencies": {
         "@types/dockerode": "^4.0.1",
         "@types/node": "^20.12.7",
+        "electron": "^40.8.0",
+        "electron-builder": "^26.8.1",
+        "pkg": "^5.8.1",
         "ts-node": "^10.9.2",
         "typescript": "^5.4.5"
     }

@@ -1,0 +1,6 @@
+  ΓÇó electron-builder  version=26.8.1 os=10.0.26200
+  ΓÇó loaded configuration  file=package.json ("build" field)
+  ΓÇó description is missed in the package.json  appPackageFile=C:\Users\ICrim\Documents\hobby\Nexus_server\nexushost\dashboard\package.json
+  ΓÇó author is missed in the package.json  appPackageFile=C:\Users\ICrim\Documents\hobby\Nexus_server\nexushost\dashboard\package.json
+  Γ¿» Cannot compute electron version from installed node modules - none of the possible electron modules are installed.
+See https://github.com/electron-userland/electron-builder/issues/3984#issuecomment-504968246
