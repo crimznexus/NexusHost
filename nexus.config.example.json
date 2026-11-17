@@ -1,0 +1,17 @@
+{
+  "serverName": "Friends Server",
+  "motd": "Friends Server",
+  "mcVersion": "26.3",
+  "dataVersion": 5023,
+  "tailscaleHost": "",
+  "memoryGB": 8,
+  "maxPlayers": 12,
+  "viewDistance": 10,
+  "simulationDistance": 8,
+  "difficulty": "easy",
+  "iconText": "NEXUS",
+  "serverDir": "server",
+  "plugins": ["bluemap", "simple-voice-chat", "axgraves", "chunky"],
+  "datapacks": ["dungeons-and-taverns"],
+  "ports": { "minecraft": 25565, "bluemap": 8100, "voicechat": 24454 }
+}

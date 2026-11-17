@@ -1,0 +1,55 @@
+# Client mods for the friend installer: one Modrinth slug per line, then its kind (mod, shader or resourcepack).
+# Required dependencies are added automatically. After editing, run:  pwsh -File build-installer.ps1 -Resolve
+# The first shader listed is switched on by default; the first resource pack is enabled by default.
+
+# Base
+fabric-api                 mod
+modmenu                    mod
+
+# Performance (matters most on 2 GB graphics cards)
+sodium                     mod
+lithium                    mod
+ferrite-core               mod
+immediatelyfast            mod
+entityculling              mod
+moreculling                mod
+cull-leaves                mod
+dynamic-fps                mod
+sodium-extra               mod
+reeses-sodium-options      mod
+
+# Maps
+xaeros-minimap             mod
+xaeros-world-map           mod
+
+# Information and health bars
+jade                       mod
+appleskin                  mod
+
+# Inventory and quality of life
+mouse-tweaks               mod
+inventory-profiles-next    mod
+shulkerboxtooltip          mod
+rei                        mod
+zoomify                    mod
+controlling                mod
+chat-heads                 mod
+
+# Graphics
+iris                       mod
+continuity                 mod
+3dskinlayers               mod
+visuality                  mod
+ambientsounds              mod
+entity-model-features      mod
+entitytexturefeatures      mod
+
+# Voice chat (pairs with the simple-voice-chat server plugin)
+simple-voice-chat          mod
+
+# Shaders: MakeUp Ultra Fast is light enough for weak GPUs
+makeup-ultra-fast-shaders  shader
+complementary-reimagined   shader
+
+# Resource packs
+fresh-animations           resourcepack

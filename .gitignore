@@ -1,15 +1,14 @@
-node_modules/
+# Your settings (Tailscale IP, server name)
+nexus.config.json
+
+# The running server: world, player data, whitelist, logs, jars
+server/
+
+# Built friend installer and guide (contain your Tailscale IP)
 dist/
-.env
-.DS_Store
+
 *.log
-.vscode/
-build/
-.next/
-out/
-playit.exe
-playit.secret
-cloudflared.exe
-mc-data/
-*.jfr
+*.part
 *.tmp
+.DS_Store
+.vscode/
