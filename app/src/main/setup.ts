@@ -8,6 +8,8 @@ import { installPlugin } from './plugins'
 import { findJava } from './java'
 import { saveSettings } from './settings'
 import { resourcePath, run } from './util'
+import { importWorld } from './worlds'
+import { server } from './server'
 
 export async function inspectFolder(dir: string): Promise<ServerInfo> {
   const exists = existsSync(dir)
@@ -45,7 +47,7 @@ export async function makeServerIcon(dir: string, fromFile: string | null, text:
 
 /** First-run setup for a new folder, or adopting an existing server folder. */
 export async function runSetup(o: SetupOptions, progress: (p: TaskProgress) => void): Promise<void> {
-  const steps = o.mode === 'new' ? 6 : 4
+  const steps = (o.mode === 'new' ? 6 : 4) + (o.worldSource ? 1 : 0)
   let n = 0
   const step = (label: string) => progress({ task: 'setup', label, done: n++, total: steps })
   await fsp.mkdir(o.dir, { recursive: true })
@@ -79,6 +81,13 @@ export async function runSetup(o: SetupOptions, progress: (p: TaskProgress) => v
       })
     }
     if (!existsSync(path.join(o.dir, 'server-icon.png'))) await makeServerIcon(o.dir, null, o.serverName.split(/\s+/)[0]).catch(() => {})
+    if (!o.worldSource && o.seed?.trim()) await writeProperties(o.dir, { 'level-seed': o.seed.trim() })
+  }
+
+  // Start from an existing world (zip or folder). An existing server folder keeps its own world.
+  if (o.worldSource && !existing.hasWorld) {
+    step('Importing the world')
+    await importWorld(o.dir, server, o.worldSource)
   }
 
   step('Accepting the EULA')

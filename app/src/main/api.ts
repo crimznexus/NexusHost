@@ -44,6 +44,7 @@ export const api: NexusApi = {
   async javaMinimum(v) { return (await paperVersionMeta(v)).javaMin },
   async installJava(major) { return installJava(major) },
   async inspectFolder(dir) { return inspectFolder(dir) },
+  async checkWorld(src) { return worlds.checkWorldSource(src) },
   async runSetup(o) {
     mustBeStopped('changing the server setup')
     try { await runSetup(o, (progress) => emit({ type: 'progress', progress })) }

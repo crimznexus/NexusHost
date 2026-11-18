@@ -143,7 +143,12 @@ export interface SetupOptions {
   acceptEula: boolean
   motd: string
   maxPlayers: number
+  /** A world zip or folder to start with; null generates a new world (optionally from seed). */
+  worldSource?: string | null
+  seed?: string
 }
+
+export interface WorldCheck { ok: boolean; name: string; size: number; message: string }
 
 export interface TaskProgress { task: string; label: string; done: number; total: number; finished?: boolean; error?: string }
 
@@ -166,6 +171,7 @@ export interface NexusApi {
   javaMinimum(mcVersion: string): Promise<number>
   installJava(major: number): Promise<void>
   inspectFolder(dir: string): Promise<ServerInfo>
+  checkWorld(source: string): Promise<WorldCheck>
   runSetup(opts: SetupOptions): Promise<void>
   // server
   serverInfo(): Promise<ServerInfo>

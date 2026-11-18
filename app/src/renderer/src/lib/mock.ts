@@ -49,6 +49,7 @@ const impl: Record<string, (...a: any[]) => any> = {
   paperVersions: () => ({ versions: ['26.3', '26.2', '26.1.2', '1.21.11', '1.21.10'], latest: '26.3' }),
   findJava: () => ({ path: 'C:\\Program Files\\Eclipse Adoptium\\jdk-25\\bin\\java.exe', major: 25 }),
   javaMinimum: () => 25, installJava: () => {},
+  checkWorld: () => ({ ok: true, name: 'My World', size: 120_000_000, message: 'World "My World" found' }),
   inspectFolder: (dir: string) => ({ dir, exists: true, jar: null, paperBuild: null, mcVersion: null, eulaAccepted: false, onlineMode: true, levelName: 'world', port: 25565, hasWorld: false }),
   runSetup: async () => {
     for (let i = 0; i <= 5; i++) { emit({ type: 'progress', progress: { task: 'setup', label: ['Checking Java', 'Downloading Paper 26.3', 'Installing plugins', 'Writing server settings', 'Accepting the EULA', 'Saving'][i] ?? 'Done', done: i, total: 6 } }); await new Promise((r) => setTimeout(r, 400)) }

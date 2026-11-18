@@ -25,6 +25,7 @@ export function SetupWizard({ onDone, onCancel }: { onDone?: () => void; onCance
   const [javaMin, setJavaMin] = useState(21)
   const [installing, setInstalling] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
+  const [worldMsg, setWorldMsg] = useState<string | null>(null)
   const set = (p: Partial<SetupOptions>) => setO((x) => ({ ...x, ...p }))
 
   useEffect(() => { if (versions.data && !o.mcVersion) set({ mcVersion: versions.data.latest }) }, [versions.data])
@@ -109,6 +110,16 @@ export function SetupWizard({ onDone, onCancel }: { onDone?: () => void; onCance
           </>}
 
           {step === 'options' && <>
+            {!(o.mode === 'existing' && folder?.hasWorld) && <div className="stack" style={{ gap: 6 }}>
+              <div className="overline">World</div>
+              <div className="cluster">
+                <Button size="sm" onClick={async () => { const f = await api.pickFile('Pick a world zip', ['zip']); if (f) { const c = await api.checkWorld(f); setWorldMsg(c.message); set({ worldSource: c.ok ? f : null }) } }}>Use a world zip…</Button>
+                <Button size="sm" onClick={async () => { const f = await api.pickFolder('Pick a world folder (it contains level.dat)'); if (f) { const c = await api.checkWorld(f); setWorldMsg(c.message); set({ worldSource: c.ok ? f : null }) } }}>Use a world folder…</Button>
+                {o.worldSource && <Button size="sm" variant="ghost" onClick={() => { set({ worldSource: null }); setWorldMsg(null) }}>Generate a new world instead</Button>}
+              </div>
+              {worldMsg && <Banner tone={o.worldSource ? 'ok' : 'error'}>{worldMsg}</Banner>}
+              {!o.worldSource && o.mode === 'new' && <Field label="Seed (optional)" hint="Leave empty for a random world"><input className="input" value={o.seed ?? ''} onChange={(e) => set({ seed: e.target.value })} /></Field>}
+            </div>}
             <ToggleRow title="Allow TLauncher players (offline mode)" hint="Players without a bought Minecraft account can join. Names are then case-sensitive. You can change this later in Options." checked={o.offlineMode} onChange={(v) => set({ offlineMode: v })} disabled={o.mode === 'existing'} />
             {o.mode === 'new' && <div>
               <div className="overline" style={{ margin: '8px 0 4px' }}>Plugins</div>
