@@ -196,15 +196,19 @@ export class ServerManager extends EventEmitter {
     })
   }
 
-  async stop(): Promise<void> {
-    if (!this.proc) return
-    if (this.stats.state === 'stopping') return
+  private stopping: Promise<void> | null = null
+
+  /** Stops the server cleanly. Calling it again while it is stopping waits for the same shutdown. */
+  stop(): Promise<void> {
+    if (!this.proc) return Promise.resolve()
+    if (this.stopping) return this.stopping
+    const p = this.proc
     this.userStopped = true
     this.setStats({ state: 'stopping' })
+    this.stopping = new Promise<void>((res) => p.once('close', () => { this.stopping = null; res() }))
     this.write('stop')
-    const p = this.proc
     this.stopTimer = setTimeout(() => { if (this.proc === p) { this.system('The server did not stop within 90 seconds. Forcing it to close.'); p.kill() } }, 90000)
-    await new Promise<void>((res) => p.once('close', () => res()))
+    return this.stopping
   }
 
   async restart(): Promise<void> {
