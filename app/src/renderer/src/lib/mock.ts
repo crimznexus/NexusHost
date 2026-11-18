@@ -1,6 +1,7 @@
 // Dev-only fake backend so the UI can be reviewed in a normal browser. Never bundled in production
 // because api.ts imports it only when import.meta.env.DEV is true.
 import type { AppSettings, LogLine, NexusEvent, ServerStats } from '@shared/types'
+import iconUrl from '../../../../resources/icon.png?url'
 
 const listeners = new Set<(e: NexusEvent) => void>()
 const emit = (e: NexusEvent) => listeners.forEach((l) => l(e))
@@ -13,14 +14,23 @@ const logs: LogLine[] = [
   line('[21:01:04 INFO]: Done (22.361s)! For help, type "help"'),
   line('[21:03:12 INFO]: System chat: steve joined the game'),
   line('> list', 'command'),
-  line('[21:03:20 INFO]: There are 2 of a max of 12 players online: steve, alex')
+  line('[21:03:20 INFO]: There are 2 of a max of 12 players online: steve, alex'),
+  line('[21:04:40 INFO]: [BlueMap] Rendering 312 new chunks in world'),
+  line('[21:05:11 INFO]: System chat: <alex> anyone up for the nether?'),
+  line('[21:05:19 INFO]: System chat: <steve> give me 5 min, sorting the chests'),
+  line('[21:06:03 INFO]: System chat: maya joined the game'),
+  line('[21:06:30 INFO]: [AxGraves] Grave created for maya at -142, 63, 88'),
+  line('> time set day', 'command'),
+  line('[21:06:41 INFO]: Set the time to 1000'),
+  line('[21:07:15 INFO]: System chat: <maya> thanks for the grave lol'),
+  line('[21:08:00 INFO]: [Chunky] Task running for world. Processed: 61.2% (4,519/7,381), ETA: 0:04:12')
 ]
 const setup = new URLSearchParams(location.search).has('setup')
 let settings: AppSettings = {
   serverDir: setup ? null : 'C:\\Servers\\friends', serverName: 'Friends Server', mcVersion: '26.3', memoryGB: 8, javaPath: 'C:\\Program Files\\Eclipse Adoptium\\jdk-25\\bin\\java.exe', javaFlags: [],
   iconText: 'NEXUS', autoStartServer: false, startWithWindows: false, closeToTray: true, autoRestart: true, autoStopMinutes: 0, backups: { daily: true, keep: 7, lastRun: new Date().toISOString() }
 }
-let stats: ServerStats = { state: 'online', pid: 1234, startedAt: Date.now() - 3600_000 * 2.3, cpu: 14, memoryMB: 5120, tps: 19.9, players: ['steve', 'alex'], maxPlayers: 12, lastExitCode: null, emptySince: null }
+let stats: ServerStats = { state: 'online', pid: 1234, startedAt: Date.now() - 3600_000 * 2.3, cpu: 14, memoryMB: 8550, heapUsedMB: 3180, heapMaxMB: 8192, tps: 20.0, players: ['steve', 'alex', 'maya'], maxPlayers: 12, lastExitCode: null, emptySince: null }
 const props: Record<string, string> = { motd: 'Friends Server', 'max-players': '12', difficulty: 'easy', gamemode: 'survival', pvp: 'true', 'white-list': 'true', 'online-mode': 'false', 'view-distance': '10', 'simulation-distance': '8', 'spawn-protection': '16', hardcore: 'false', 'allow-flight': 'false', 'level-seed': '', 'server-port': '25565' }
 
 const impl: Record<string, (...a: any[]) => any> = {
@@ -44,17 +54,19 @@ const impl: Record<string, (...a: any[]) => any> = {
   sendCommand: (c: string) => { const l = [line('> ' + c, 'command')]; logs.push(...l); emit({ type: 'log', lines: l }) },
   getLogs: () => logs, getStats: () => stats,
   getProperties: () => props, setProperties: (p: Record<string, string>) => Object.assign(props, p),
-  setOfflineMode: () => ['steve: data moved', 'Switched to offline mode.'], setServerIcon: () => 'ok', serverIconData: () => null,
-  players: () => ({ online: stats.players, whitelist: [{ uuid: 'a', name: 'steve' }, { uuid: 'b', name: 'alex' }, { uuid: 'c', name: 'a_really_long_player_name' }], ops: [{ uuid: 'a', name: 'steve', level: 4 }], banned: [], bannedIps: [], known: [], whitelistEnabled: true, onlineMode: false }),
+  setOfflineMode: () => ['steve: data moved', 'Switched to offline mode.'], setServerIcon: () => 'ok', serverIconData: () => iconUrl,
+  players: () => ({ online: stats.players, whitelist: [{ uuid: '5f1c2a9e-0b7d-3c41-9a8e-2d6f4b1c7e30', name: 'steve' }, { uuid: '8a2e4f10-6c3b-3d7a-b1f9-0e5c2a7d9b42', name: 'alex' }, { uuid: 'c4d71b3e-9f2a-3e60-8b14-7a5d0c2f6e91', name: 'maya' }, { uuid: '1e9b5c7a-2d4f-3a81-9c06-b3f8e2a4d157', name: 'jonas' }, { uuid: '6b3f8d2c-1a7e-3f94-a2c5-9d0e7b4a1c68', name: 'priya' }], ops: [{ uuid: '5f1c2a9e-0b7d-3c41-9a8e-2d6f4b1c7e30', name: 'steve', level: 4 }], banned: [], bannedIps: [], known: [], whitelistEnabled: true, onlineMode: false }),
   playerAction: () => {}, setWhitelistEnabled: () => {},
   paperBuilds: () => [{ id: 253, channel: 'STABLE', time: '2026-11-15T17:14:05Z' }, { id: 252, channel: 'STABLE', time: '2026-11-14T10:00:00Z' }],
   updatePaper: () => ({ build: 253, jar: 'paper-26.3-253.jar' }),
   plugins: () => [
     { file: 'bluemap-5.29-paper.jar', enabled: true, name: 'BlueMap', version: '5.29', description: 'A 3D map of your world in the browser', authors: ['Blue'], slug: 'bluemap', latestVersion: null, updateFile: null },
     { file: 'Chunky-Paper-1.5.66.jar', enabled: true, name: 'Chunky', version: '1.5.66', description: 'Pre-generates chunks', authors: ['pop4959'], slug: 'chunky', latestVersion: '1.5.70', updateFile: 'Chunky-Paper-1.5.70.jar' },
-    { file: 'AuthMe-6.0.1-Paper.jar', enabled: false, name: 'AuthMe', version: '6.0.1', description: '', authors: [], slug: 'authmereloaded', latestVersion: null, updateFile: null }
+    { file: 'AxGraves-1.32.2.jar', enabled: true, name: 'AxGraves', version: '1.32.2', description: 'Items go into a grave when you die', authors: [], slug: 'axgraves', latestVersion: null, updateFile: null },
+    { file: 'voicechat-bukkit-2.6.27.jar', enabled: true, name: 'Simple Voice Chat', version: '2.6.27', description: 'Proximity voice chat', authors: [], slug: 'simple-voice-chat', latestVersion: null, updateFile: null },
+    { file: 'SkinsRestorer.jar', enabled: true, name: 'SkinsRestorer', version: '15.12.6', description: 'Keeps skins working in offline mode', authors: [], slug: 'skinsrestorer', latestVersion: null, updateFile: null }
   ],
-  searchPlugins: () => [{ slug: 'worldedit', title: 'WorldEdit', description: 'An in-game Minecraft map editor for builders.', author: 'EngineHub', downloads: 11974609, icon_url: null, categories: ['utility'] }, { slug: 'luckperms', title: 'LuckPerms', description: 'A permissions plugin for Minecraft servers.', author: 'Luck', downloads: 2000000, icon_url: null, categories: [] }],
+  searchPlugins: () => ([['worldedit', 'WorldEdit', 'An in-game map editor for builders.', 'EngineHub', 11974609], ['luckperms', 'LuckPerms', 'Permissions for players and groups.', 'Luck', 2100000], ['essentialsx', 'EssentialsX', 'Homes, warps, kits and handy commands.', 'EssentialsX', 1800000], ['coreprotect', 'CoreProtect', 'Logs and rolls back block changes.', 'Intelli', 1500000], ['discordsrv', 'DiscordSRV', 'Bridges server chat with Discord.', 'Scarsz', 1200000], ['tab-was-taken', 'TAB', 'Custom tab list and name tags.', 'NEZNAMY', 900000]] as const).map(([slug, title, description, author, downloads]) => ({ slug, title, description, author, downloads, icon_url: null, categories: [] })),
   installPlugin: () => 'x.jar', updatePlugin: () => 'x.jar', setPluginEnabled: () => {}, removePlugin: () => {},
   worldInfo: () => ({ levelName: 'world', folders: [{ name: 'world', size: 812_000_000 }], datapacks: ['Dungeons and Taverns v6.1.0.zip'], seed: '' }),
   importWorld: () => {}, exportWorld: () => null, resetWorld: () => {}, addDatapack: () => {}, removeDatapack: () => {},
@@ -68,7 +80,7 @@ const impl: Record<string, (...a: any[]) => any> = {
   logFiles: () => [{ name: 'latest.log', rel: 'logs/latest.log', dir: false, size: 20000, modified: Date.now() }], readLog: () => logs.map((l) => l.text).join('\n'),
   tailscale: () => ({ installed: true, running: true, loggedIn: true, ip: '100.101.102.103', dnsName: 'host-pc.tail1234.ts.net', hostName: 'host-pc', firewallReady: true }),
   setupFirewall: () => true,
-  friendKit: () => ({ dir: 'C:\\Users\\you\\AppData\\Roaming\\NexusHost\\friend-kit', installer: null, guide: null, builtAt: null, modCount: 42, mods: [{ slug: 'sodium', title: 'Sodium', kind: 'mod', version: '0.7' }, { slug: 'xaeros-minimap', title: "Xaero's Minimap", kind: 'mod', version: '25.2' }] }),
+  friendKit: () => ({ dir: 'C:\\Users\\you\\AppData\\Roaming\\NexusHost\\friend-kit', installer: 'C:\\kit\\Install-FriendsServer-Mods.bat', guide: null, builtAt: Date.now() - 3600_000, modCount: 42, mods: [{ slug: 'sodium', title: 'Sodium', kind: 'mod', version: '0.7' }, { slug: 'xaeros-minimap', title: "Xaero's Minimap", kind: 'mod', version: '25.2' }] }),
   buildFriendKit: () => ({ dir: 'C:\\kit', installer: 'C:\\kit\\Install-FriendsServer-Mods.bat', guide: 'C:\\kit\\FRIENDS-GUIDE.md', builtAt: Date.now(), modCount: 42, mods: [] })
 }
 

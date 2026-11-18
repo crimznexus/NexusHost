@@ -18,7 +18,7 @@ interface Store {
 }
 
 const Ctx = createContext<Store | null>(null)
-const EMPTY: ServerStats = { state: 'stopped', pid: null, startedAt: null, cpu: null, memoryMB: null, tps: null, players: [], maxPlayers: 20, lastExitCode: null, emptySince: null }
+const EMPTY: ServerStats = { state: 'stopped', pid: null, startedAt: null, cpu: null, memoryMB: null, heapUsedMB: null, heapMaxMB: null, tps: null, players: [], maxPlayers: 20, lastExitCode: null, emptySince: null }
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings | null>(null)

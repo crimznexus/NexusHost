@@ -7,7 +7,7 @@ import type { LogLine, ServerStats } from '@shared/types'
 import { getSettings } from './settings'
 import { readProperties } from './properties'
 import { findPaperJar } from './paper'
-import { portInUse, sleep } from './util'
+import { portInUse, run, sleep } from './util'
 
 const ANSI = /\x1b\[[0-9;?]*[A-Za-z]|§[0-9a-fk-or]/gi
 const MAX_LINES = 3000
@@ -30,7 +30,8 @@ export class ServerManager extends EventEmitter {
   private hideTpsUntil = 0
   private waiters: { re: RegExp; resolve: (l: string) => void }[] = []
   private userStopped = false
-  stats: ServerStats = { state: 'stopped', pid: null, startedAt: null, cpu: null, memoryMB: null, tps: null, players: [], maxPlayers: 20, lastExitCode: null, emptySince: null }
+  private heapTick = 0
+  stats: ServerStats = { state: 'stopped', pid: null, startedAt: null, cpu: null, memoryMB: null, heapUsedMB: null, heapMaxMB: null, tps: null, players: [], maxPlayers: 20, lastExitCode: null, emptySince: null }
 
   get running() { return this.proc !== null }
   getLogs() { return this.lines }
@@ -85,7 +86,7 @@ export class ServerManager extends EventEmitter {
     this.system(`Starting ${jar.jar} with ${mem} RAM`)
     const p = spawn(s.javaPath, args, { cwd: dir, windowsHide: true })
     this.proc = p
-    this.setStats({ state: 'starting', pid: p.pid ?? null, startedAt: Date.now(), players: [], tps: null, cpu: null, memoryMB: null, lastExitCode: null, maxPlayers: Number(props['max-players'] || 20), emptySince: null })
+    this.setStats({ state: 'starting', pid: p.pid ?? null, startedAt: Date.now(), players: [], tps: null, cpu: null, memoryMB: null, heapUsedMB: null, heapMaxMB: null, lastExitCode: null, maxPlayers: Number(props['max-players'] || 20), emptySince: null })
 
     let buf = ''
     const onData = (d: Buffer, isErr: boolean) => {
@@ -135,12 +136,25 @@ export class ServerManager extends EventEmitter {
       const u = await pidusage(p.pid)
       this.setStats({ cpu: Math.round(u.cpu / Math.max(1, (await import('node:os')).cpus().length)), memoryMB: Math.round(u.memory / 1048576) })
     } catch { /* process gone */ }
+    if (++this.heapTick % 5 === 1) this.sampleHeap(p.pid).catch(() => {})
     // auto-stop when nobody has been online for a while
     const mins = getSettings().autoStopMinutes
     if (mins > 0 && this.stats.state === 'online' && this.stats.emptySince && Date.now() - this.stats.emptySince > mins * 60000) {
       this.system(`Nobody online for ${mins} minutes. Stopping the server (auto-stop).`)
       this.stop().catch(() => {})
     }
+  }
+
+  /** Heap in use vs. allocated, via jcmd next to the java.exe that runs the server (JDKs ship it; JREs don't). */
+  private async sampleHeap(pid: number) {
+    const java = getSettings().javaPath
+    if (!java) return
+    const jcmd = path.join(path.dirname(java), 'jcmd.exe')
+    if (!existsSync(jcmd)) return
+    const r = await run(jcmd, [String(pid), 'GC.heap_info'], { timeoutMs: 8000 })
+    const m = /total (?:reserved )?(\d+)K, committed (\d+)K, used (\d+)K/.exec(r.stdout)
+    if (!m || this.proc?.pid !== pid) return
+    this.setStats({ heapUsedMB: Math.round(Number(m[3]) / 1024), heapMaxMB: Math.round(Number(m[1]) / 1024) })
   }
 
   private onExit(code: number | null) {
@@ -151,7 +165,7 @@ export class ServerManager extends EventEmitter {
     pidusage.clear()
     const crashed = !wasStopping && code !== 0
     this.system(crashed ? `Server stopped unexpectedly (exit code ${code}).` : 'Server stopped.')
-    this.setStats({ state: crashed ? 'crashed' : 'stopped', pid: null, players: [], tps: null, cpu: null, memoryMB: null, startedAt: null, lastExitCode: code, emptySince: null })
+    this.setStats({ state: crashed ? 'crashed' : 'stopped', pid: null, players: [], tps: null, cpu: null, memoryMB: null, heapUsedMB: null, heapMaxMB: null, startedAt: null, lastExitCode: code, emptySince: null })
     if (crashed && getSettings().autoRestart) {
       const now = Date.now()
       this.crashTimes = this.crashTimes.filter((t) => now - t < 10 * 60000).concat(now)

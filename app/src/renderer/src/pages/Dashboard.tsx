@@ -17,7 +17,10 @@ export function Dashboard({ go }: PageProps) {
   const address = ts.data?.ip ?? null
   const port = info.data?.port ?? 25565
   const addrText = address ? (port === 25565 ? address : `${address}:${port}`) : null
-  const memGB = stats.memoryMB != null ? (stats.memoryMB / 1024).toFixed(1) : '–'
+  // Prefer real heap use out of the allocated heap; fall back to the process size if jcmd isn't available.
+  const heap = stats.heapUsedMB != null && stats.heapMaxMB
+  const memGB = heap ? (stats.heapUsedMB! / 1024).toFixed(1) : stats.memoryMB != null ? (stats.memoryMB / 1024).toFixed(1) : '–'
+  const memUnit = heap ? `/ ${Math.round(stats.heapMaxMB! / 1024)} GB` : stats.memoryMB != null ? 'GB (process)' : undefined
   const running = stats.state === 'online'
 
   return (
@@ -51,7 +54,7 @@ export function Dashboard({ go }: PageProps) {
           <Stat label="Players" value={stats.players.length} unit={`/ ${stats.maxPlayers}`} />
           <Stat label="TPS" value={stats.tps != null ? stats.tps.toFixed(1) : '–'} meter={stats.tps != null ? stats.tps / 20 : null} />
           <Stat label="CPU" value={stats.cpu ?? '–'} unit={stats.cpu != null ? '%' : undefined} meter={stats.cpu != null ? stats.cpu / 100 : null} />
-          <Stat label="Memory" value={memGB} unit={stats.memoryMB != null ? `GB used (${settings?.memoryGB} GB set)` : undefined} />
+          <Stat label="Memory" value={memGB} unit={memUnit} meter={heap ? stats.heapUsedMB! / stats.heapMaxMB! : null} />
         </div>
       </section>
 

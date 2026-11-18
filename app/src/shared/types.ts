@@ -31,6 +31,9 @@ export interface ServerStats {
   startedAt: number | null
   cpu: number | null
   memoryMB: number | null
+  /** Java heap in use and the allocated maximum (-Xmx), from jcmd; null if jcmd is unavailable. */
+  heapUsedMB: number | null
+  heapMaxMB: number | null
   tps: number | null
   players: string[]
   maxPlayers: number
