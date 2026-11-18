@@ -9,6 +9,12 @@ Turn a Windows PC or laptop into a Minecraft Java server for you and your friend
 - Server plugins: **BlueMap** (live 3D web map), **Simple Voice Chat**, **AxGraves**, **Chunky**
 - Optional **TLauncher / non-premium support**: one switch turns on offline mode, installs SkinsRestorer and moves existing players' saves ([details](docs/HOSTING.md#letting-tlauncher-non-premium-players-join))
 
+## Download
+
+Get **[NexusHost-Setup-2.0.0.exe](https://github.com/crimznexus/NexusHost/releases/latest)** from the latest release and run it. It installs for your Windows user only (no admin), adds a Start menu and desktop shortcut, and opens a setup wizard. A portable `.exe` is on the same page.
+
+Windows may say "Windows protected your PC" because the app isn't code-signed yet: click **More info → Run anyway**.
+
 The PowerShell scripts below do the same jobs from the command line, for people who prefer that.
 
 ## The app
