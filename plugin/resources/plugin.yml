@@ -1,0 +1,14 @@
+name: NexusGuard
+version: 1.0.0
+main: io.github.crimznexus.nexusguard.NexusGuard
+api-version: '1.21'
+description: Locks each player name to the Tailscale account that first joined with it.
+website: https://github.com/crimznexus/NexusHost
+commands:
+  nexusguard:
+    description: List or reset locked names
+    usage: /nexusguard list | /nexusguard reset <name>
+    permission: nexusguard.admin
+permissions:
+  nexusguard.admin:
+    default: op

@@ -68,6 +68,9 @@ export interface PlayerLists {
   onlineMode: boolean
 }
 
+export interface GuardLock { name: string; userId: string; tailscaleLogin: string; tailscaleName: string; device: string; lockedAt: string }
+export interface GuardInfo { installed: boolean; locks: GuardLock[] }
+
 export interface PluginInfo {
   file: string
   enabled: boolean
@@ -168,6 +171,9 @@ export interface NexusApi {
   players(): Promise<PlayerLists>
   playerAction(action: 'whitelist-add' | 'whitelist-remove' | 'op' | 'deop' | 'kick' | 'ban' | 'pardon' | 'pardon-ip', name: string, reason?: string): Promise<void>
   setWhitelistEnabled(on: boolean): Promise<void>
+  guard(): Promise<GuardInfo>
+  installGuard(): Promise<string[]>
+  unlockName(name: string): Promise<void>
   // software
   paperBuilds(version: string): Promise<{ id: number; channel: string; time: string }[]>
   updatePaper(version: string): Promise<{ build: number; jar: string }>

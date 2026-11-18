@@ -15,6 +15,7 @@ import { listFiles, logFiles, readLog, readText, writeText } from './files'
 import { setupFirewall, tailscaleInfo } from './network'
 import { buildFriendKit, friendKitInfo } from './friendkit'
 import { acceptEula, inspectFolder, makeServerIcon, runSetup } from './setup'
+import { guardInfo, installGuard, unlock } from './guard'
 
 export function emit(e: NexusEvent) {
   for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('nexus:event', e)
@@ -69,8 +70,15 @@ export const api: NexusApi = {
     mustBeStopped('switching offline mode')
     const dir = requireServerDir()
     const report = await switchMode(dir, offline, renames)
-    // SkinsRestorer brings skins back in offline mode
-    if (offline) { try { await installPlugin(dir, 'skinsrestorer', getSettings().mcVersion); report.push('Installed SkinsRestorer so skins still show.') } catch { report.push('Could not install SkinsRestorer; skins will be default.') } }
+    // SkinsRestorer brings skins back in offline mode; NexusGuard stops players joining under each other's names
+    if (offline) {
+      try { await installPlugin(dir, 'skinsrestorer', getSettings().mcVersion); report.push('Installed SkinsRestorer so skins still show.') } catch { report.push('Could not install SkinsRestorer; skins will be default.') }
+      report.push(...(await installGuard(dir, (await getPlayers(dir, [])).whitelist)))
+    } else if (existsSync(path.join(dir, 'plugins', 'NexusGuard.jar'))) {
+      await fsp.mkdir(path.join(dir, 'plugins-disabled'), { recursive: true })
+      await fsp.rename(path.join(dir, 'plugins', 'NexusGuard.jar'), path.join(dir, 'plugins-disabled', 'NexusGuard.jar'))
+      report.push('NexusGuard turned off: online mode already checks every account.')
+    }
     return report
   },
   async setServerIcon(fromFile, text) { return makeServerIcon(requireServerDir(), fromFile, text) },
@@ -82,6 +90,9 @@ export const api: NexusApi = {
   async players() { return getPlayers(requireServerDir(), server.stats.players) },
   async playerAction(action, name, reason) { await playerAction(requireServerDir(), server, action, name, reason) },
   async setWhitelistEnabled(on) { await setWhitelist(requireServerDir(), server, on) },
+  async guard() { return guardInfo(requireServerDir()) },
+  async installGuard() { const dir = requireServerDir(); return installGuard(dir, (await getPlayers(dir, [])).whitelist) },
+  async unlockName(name) { await unlock(requireServerDir(), name) },
 
   async paperBuilds(v) { return (await paperBuilds(v)).slice(0, 15).map((b) => ({ id: b.id, channel: b.channel, time: b.time })) },
   async updatePaper(version) {

@@ -1,0 +1,3 @@
+# NexusGuard locks each player name to the Tailscale account that first joined with it.
+# Path to tailscale.exe on this PC.
+tailscale-path: 'C:\Program Files\Tailscale\tailscale.exe'

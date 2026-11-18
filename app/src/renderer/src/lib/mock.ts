@@ -57,6 +57,8 @@ const impl: Record<string, (...a: any[]) => any> = {
   setOfflineMode: () => ['steve: data moved', 'Switched to offline mode.'], setServerIcon: () => 'ok', serverIconData: () => iconUrl,
   players: () => ({ online: stats.players, whitelist: [{ uuid: '5f1c2a9e-0b7d-3c41-9a8e-2d6f4b1c7e30', name: 'steve' }, { uuid: '8a2e4f10-6c3b-3d7a-b1f9-0e5c2a7d9b42', name: 'alex' }, { uuid: 'c4d71b3e-9f2a-3e60-8b14-7a5d0c2f6e91', name: 'maya' }, { uuid: '1e9b5c7a-2d4f-3a81-9c06-b3f8e2a4d157', name: 'jonas' }, { uuid: '6b3f8d2c-1a7e-3f94-a2c5-9d0e7b4a1c68', name: 'priya' }], ops: [{ uuid: '5f1c2a9e-0b7d-3c41-9a8e-2d6f4b1c7e30', name: 'steve', level: 4 }], banned: [], bannedIps: [], known: [], whitelistEnabled: true, onlineMode: false }),
   playerAction: () => {}, setWhitelistEnabled: () => {},
+  guard: () => ({ installed: true, locks: [['steve', 'Steve R.', 'steve-pc'], ['alex', 'Alex K.', 'alex-laptop'], ['maya', 'Maya P.', 'maya-desktop']].map(([name, tailscaleName, device]) => ({ name, tailscaleName, device, tailscaleLogin: '', userId: '1', lockedAt: '' })) }),
+  installGuard: () => ['NexusGuard installed.'], unlockName: () => {},
   paperBuilds: () => [{ id: 253, channel: 'STABLE', time: '2026-11-15T17:14:05Z' }, { id: 252, channel: 'STABLE', time: '2026-11-14T10:00:00Z' }],
   updatePaper: () => ({ build: 253, jar: 'paper-26.3-253.jar' }),
   plugins: () => [
