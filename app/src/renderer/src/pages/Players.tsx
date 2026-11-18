@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Ban, Crown, ShieldOff, Trash2, UserMinus, UserPlus, Users } from 'lucide-react'
+import { Ban, Crown, Lock, ShieldOff, Trash2, Unlock, UserMinus, UserPlus, Users } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useLoad, useStore } from '@/lib/store'
 import { ActionButton, Avatar, Banner, Button, Empty, Panel, promptDialog, Seg, ToggleRow, confirmDialog } from '@/components/ui'
@@ -7,8 +7,10 @@ import { ActionButton, Avatar, Banner, Button, Empty, Panel, promptDialog, Seg, 
 type Tab = 'whitelist' | 'ops' | 'banned'
 
 export function PlayersPage() {
-  const { stats, act } = useStore()
+  const { stats, act, toast } = useStore()
   const p = useLoad(() => api.players(), [stats.players.join(','), stats.state])
+  const guard = useLoad(() => api.guard(), [stats.players.join(','), stats.state])
+  const lockOf = (name: string) => guard.data?.locks.find((l) => l.name.toLowerCase() === name.toLowerCase())
   const [tab, setTab] = useState<Tab>('whitelist')
   const running = stats.state === 'online'
   const run = async (action: Parameters<typeof api.playerAction>[0], name: string, done: string, reason?: string) => {
@@ -52,6 +54,13 @@ export function PlayersPage() {
       <Panel title="Access" sub={running ? 'Changes apply right away.' : 'The server is stopped; changes are saved to the files and apply on next start.'}
         actions={<><Seg value={tab} onChange={setTab} options={[{ value: 'whitelist', label: `Whitelist${d ? ` (${d.whitelist.length})` : ''}` }, { value: 'ops', label: `Operators${d ? ` (${d.ops.length})` : ''}` }, { value: 'banned', label: `Banned${d ? ` (${d.banned.length})` : ''}` }]} />
           <Button variant="primary" icon={tab === 'banned' ? Ban : UserPlus} onClick={add}>{tab === 'whitelist' ? 'Add' : tab === 'ops' ? 'Add operator' : 'Ban'}</Button></>}>
+        {tab === 'whitelist' && d && !d.onlineMode && guard.data && !guard.data.installed && (
+          <div style={{ marginBottom: 12 }}>
+            <Banner tone="warn" action={<ActionButton size="sm" variant="primary" icon={Lock} onAction={async () => { const r = await act(() => api.installGuard()); if (r) { toast('success', r.join(' · ')); guard.reload() } }}>Protect names</ActionButton>}>
+              Offline mode is on, so anyone on your whitelist can join using another player's name, including yours. NexusGuard locks each name to its owner's Tailscale account.
+            </Banner>
+          </div>
+        )}
         {tab === 'whitelist' && d && (
           <div style={{ marginBottom: 12 }}>
             <ToggleRow title="Whitelist" hint={d.whitelistEnabled ? 'Only players on this list can join.' : 'Anyone who can reach the server can join.'} checked={d.whitelistEnabled}
@@ -64,8 +73,13 @@ export function PlayersPage() {
         <div className="rows">
           {list.map((e) => (
             <div className="row" key={e.uuid + e.name}><Avatar name={e.name} />
-              <div style={{ minWidth: 0 }}><div className="row__title truncate">{e.name}</div><div className="row__meta mono truncate">{tab === 'banned' ? (e.reason || 'Banned') : e.uuid}</div></div>
+              <div style={{ minWidth: 0 }}><div className="row__title truncate">{e.name}</div>{tab === 'whitelist' && guard.data?.installed
+                  ? <div className="row__meta truncate">{lockOf(e.name) ? <>Locked to {lockOf(e.name)!.tailscaleName || lockOf(e.name)!.tailscaleLogin}{lockOf(e.name)!.device ? ` · ${lockOf(e.name)!.device}` : ''}</> : 'Locks to their Tailscale account on first join'}</div>
+                  : <div className="row__meta mono truncate">{tab === 'banned' ? (e.reason || 'Banned') : e.uuid}</div>}</div>
               <div className="row__actions">
+                {tab === 'whitelist' && lockOf(e.name) && <Button size="sm" variant="ghost" icon={Unlock} label="Reset name lock" onClick={async () => {
+                  if (await confirmDialog({ title: `Reset ${e.name}'s lock?`, body: `The name locks again to whichever Tailscale account joins with it next. Do this if ${e.name} got a new Tailscale account.`, confirm: 'Reset lock' })) { await act(() => api.unlockName(e.name), `${e.name} unlocked`); guard.reload() }
+                }} />}
                 {tab === 'whitelist' && <ActionButton size="sm" variant="ghost" icon={UserMinus} label="Remove from whitelist" onAction={() => run('whitelist-remove', e.name, `${e.name} removed`)} />}
                 {tab === 'ops' && <ActionButton size="sm" variant="ghost" icon={ShieldOff} label="Remove operator" onAction={() => run('deop', e.name, `${e.name} is no longer an operator`)} />}
                 {tab === 'banned' && <ActionButton size="sm" variant="ghost" icon={Trash2} label="Pardon" onAction={() => run('pardon', e.name, `${e.name} pardoned`)} />}

@@ -40,7 +40,7 @@ By default the server only accepts accounts Minecraft confirms as bought. To let
 
 - **SkinsRestorer** is installed so skins still show (offline mode loses them otherwise).
 - The whitelist and the Tailscale-only firewall stay on, so only your friends can reach the server.
-- There is no password login: a whitelisted friend could join using another whitelisted name (including yours, with op). Only whitelist people you trust.
+- **NexusGuard** (bundled with NexusHost) locks each name to the Tailscale account that first joins with it. Offline mode can't check who owns a name, but Tailscale knows exactly which account every connection comes from, so a friend can't join as you or anyone else. No passwords. If someone gets a new Tailscale account, reset their lock on the Players page (or `nexusguard reset <name>` in the console).
 
 **In the NexusHost app:** Options → Offline mode → Turn on. It moves everyone's saves for you.
 
@@ -48,7 +48,7 @@ By default the server only accepts accounts Minecraft confirms as bought. To let
 
 **With the scripts, existing server:** offline mode gives every player a new ID, so their saves have to move too.
 
-1. Set `"allowCrackedLaunchers": true` and run `pwsh -File setup-server.ps1` (installs SkinsRestorer).
+1. Set `"allowCrackedLaunchers": true` and run `pwsh -File setup-server.ps1` (installs SkinsRestorer and NexusGuard).
 2. Stop the server, then run:
    ```bash
    pwsh -File scripts\switch-to-offline.ps1

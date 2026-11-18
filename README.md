@@ -11,7 +11,7 @@ Turn a Windows PC or laptop into a Minecraft Java server for you and your friend
 
 ## Download
 
-Get **[NexusHost-Setup-2.0.0.exe](https://github.com/crimznexus/NexusHost/releases/latest)** from the latest release and run it. It installs for your Windows user only (no admin), adds a Start menu and desktop shortcut, and opens a setup wizard. A portable `.exe` is on the same page.
+Get **NexusHost-Setup-x.y.z.exe** from the [latest release](https://github.com/crimznexus/NexusHost/releases/latest) and run it. It installs for your Windows user only (no admin), adds a Start menu and desktop shortcut, and opens a setup wizard. A portable `.exe` is on the same page.
 
 Windows may say "Windows protected your PC" because the app isn't code-signed yet: click **More info → Run anyway**.
 
@@ -35,6 +35,7 @@ npm run dev
 
 | Page | What it does |
 |---|---|
+| Server switcher | Several servers in one app: add new or existing server folders, switch between them (one runs at a time), rename, remove from the list |
 | Dashboard | Status beacon, Tailscale address, players, TPS, CPU and memory, recent console |
 | Console | Live output, command box with history, quick commands |
 | Players | Online players (kick, op, ban), whitelist, operators, bans; works while stopped too |
@@ -114,6 +115,7 @@ The installer is a plain-text `.bat` (a PowerShell script inside), so anyone can
 | Path | What it is |
 |---|---|
 | `app/` | The NexusHost desktop app (Electron + React) |
+| `plugin/` | NexusGuard, the Paper plugin that locks names to Tailscale accounts (`plugin/build.ps1`) |
 | `nexus.config.example.json` | All settings: names, Minecraft version, RAM, plugins, ports |
 | `setup-server.ps1` | Host setup and updates |
 | `build-installer.ps1` | Builds the friend installer and guide into `dist\` |
@@ -129,5 +131,5 @@ The installer is a plain-text `.bat` (a PowerShell script inside), so anyone can
 ## Security notes
 
 - The firewall rules accept connections only from Tailscale addresses (`100.64.0.0/10`), never from your local Wi-Fi or the internet.
-- The server runs in online mode with the whitelist enforced. With `allowCrackedLaunchers` it runs in offline mode instead; there is no password login, so only whitelist people you trust.
+- The server runs in online mode with the whitelist enforced. In offline mode (TLauncher support), the bundled **NexusGuard** plugin locks each name to its owner's Tailscale account, so nobody can join under someone else's name, and nobody needs a password.
 - Tailscale node sharing gives friends access to the server PC only, not your other devices.

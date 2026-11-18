@@ -2,7 +2,22 @@
 
 export type ServerState = 'stopped' | 'starting' | 'online' | 'stopping' | 'crashed' | 'external'
 
+/** One server NexusHost knows about. The active one is mirrored into the top-level AppSettings fields. */
+export interface SavedServer {
+  id: string
+  name: string
+  dir: string
+  mcVersion: string
+  memoryGB: number
+  javaPath: string | null
+  javaFlags: string[]
+  iconText: string
+  backups: { daily: boolean; keep: number; lastRun: string | null }
+}
+
 export interface AppSettings {
+  servers: SavedServer[]
+  activeServerId: string | null
   serverDir: string | null
   serverName: string
   mcVersion: string
@@ -68,6 +83,9 @@ export interface PlayerLists {
   onlineMode: boolean
 }
 
+export interface GuardLock { name: string; userId: string; tailscaleLogin: string; tailscaleName: string; device: string; lockedAt: string }
+export interface GuardInfo { installed: boolean; locks: GuardLock[] }
+
 export interface PluginInfo {
   file: string
   enabled: boolean
@@ -125,7 +143,12 @@ export interface SetupOptions {
   acceptEula: boolean
   motd: string
   maxPlayers: number
+  /** A world zip or folder to start with; null generates a new world (optionally from seed). */
+  worldSource?: string | null
+  seed?: string
 }
+
+export interface WorldCheck { ok: boolean; name: string; size: number; message: string }
 
 export interface TaskProgress { task: string; label: string; done: number; total: number; finished?: boolean; error?: string }
 
@@ -148,6 +171,7 @@ export interface NexusApi {
   javaMinimum(mcVersion: string): Promise<number>
   installJava(major: number): Promise<void>
   inspectFolder(dir: string): Promise<ServerInfo>
+  checkWorld(source: string): Promise<WorldCheck>
   runSetup(opts: SetupOptions): Promise<void>
   // server
   serverInfo(): Promise<ServerInfo>
@@ -163,11 +187,18 @@ export interface NexusApi {
   setProperties(patch: Record<string, string>): Promise<void>
   setOfflineMode(offline: boolean, renames: Record<string, string>): Promise<string[]>
   setServerIcon(fromFile: string | null, text: string | null): Promise<string>
-  serverIconData(): Promise<string | null>
+  serverIconData(dir?: string): Promise<string | null>
+  // server list
+  switchServer(id: string): Promise<AppSettings>
+  removeServer(id: string): Promise<AppSettings>
+  renameServer(id: string, name: string): Promise<AppSettings>
   // players
   players(): Promise<PlayerLists>
   playerAction(action: 'whitelist-add' | 'whitelist-remove' | 'op' | 'deop' | 'kick' | 'ban' | 'pardon' | 'pardon-ip', name: string, reason?: string): Promise<void>
   setWhitelistEnabled(on: boolean): Promise<void>
+  guard(): Promise<GuardInfo>
+  installGuard(): Promise<string[]>
+  unlockName(name: string): Promise<void>
   // software
   paperBuilds(version: string): Promise<{ id: number; channel: string; time: string }[]>
   updatePaper(version: string): Promise<{ build: number; jar: string }>

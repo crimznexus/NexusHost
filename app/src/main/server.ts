@@ -218,6 +218,16 @@ export class ServerManager extends EventEmitter {
   }
 
   kill() { if (this.proc) { this.userStopped = true; this.proc.kill() } }
+
+  /** Clears console and stats after switching to another server. Only call while nothing is running. */
+  reset() {
+    if (this.proc) return
+    this.lines = []
+    this.crashTimes = []
+    this.emit('log', [])
+    this.setStats({ state: 'stopped', pid: null, startedAt: null, cpu: null, memoryMB: null, heapUsedMB: null, heapMaxMB: null, tps: null, players: [], lastExitCode: null, emptySince: null })
+    this.system(`Switched to ${getSettings().serverName}.`)
+  }
 }
 
 export const server = new ServerManager()

@@ -116,7 +116,7 @@ function OfflineMode({ onlineMode, running, onDone }: { onlineMode: boolean; run
     const ok = await confirmDialog({
       title: goingOffline ? 'Turn on offline mode?' : 'Turn off offline mode?',
       body: goingOffline
-        ? 'TLauncher and other non-premium launchers can join. Each player keeps their saves under their new ID. Anyone on your whitelist could join using another whitelisted name, so only whitelist people you trust.'
+        ? 'TLauncher and other non-premium launchers can join. Each player keeps their saves under their new ID. NexusGuard is installed with it: each name locks to the Tailscale account that first joins with it, so each name can only be used by its owner.'
         : 'Only real Minecraft accounts can join again. Players without one (TLauncher) will be locked out.',
       confirm: goingOffline ? 'Turn on' : 'Turn off'
     })

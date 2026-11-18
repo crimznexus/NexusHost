@@ -14,7 +14,7 @@ const PLUGINS = [
 
 type Step = 'mode' | 'basics' | 'java' | 'options' | 'install'
 
-export function SetupWizard() {
+export function SetupWizard({ onDone, onCancel }: { onDone?: () => void; onCancel?: () => void }) {
   const { setSettings, progress, toast } = useStore()
   const sys = useLoad(() => api.systemInfo())
   const versions = useLoad(() => api.paperVersions())
@@ -25,6 +25,7 @@ export function SetupWizard() {
   const [javaMin, setJavaMin] = useState(21)
   const [installing, setInstalling] = useState(false)
   const [failed, setFailed] = useState<string | null>(null)
+  const [worldMsg, setWorldMsg] = useState<string | null>(null)
   const set = (p: Partial<SetupOptions>) => setO((x) => ({ ...x, ...p }))
 
   useEffect(() => { if (versions.data && !o.mcVersion) set({ mcVersion: versions.data.latest }) }, [versions.data])
@@ -50,7 +51,7 @@ export function SetupWizard() {
 
   const install = async () => {
     setStep('install'); setInstalling(true); setFailed(null)
-    try { await api.runSetup(o); setSettings(await api.getSettings()); toast('success', 'Your server is ready') }
+    try { await api.runSetup(o); toast('success', 'Your server is ready'); if (onDone) onDone(); else setSettings(await api.getSettings()) }
     catch (e: any) { setFailed(e.message) } finally { setInstalling(false) }
   }
 
@@ -60,7 +61,7 @@ export function SetupWizard() {
         <div className="wizard__head">
           <Beacon state={installing ? 'starting' : 'stopped'} />
           <div><div className="overline">NexusHost setup</div><h1 className="hero__name" style={{ fontSize: 24 }}>{
-            { mode: 'Host a Minecraft server', basics: 'Name and version', java: 'Java', options: 'How friends join', install: 'Setting up your server' }[step]}</h1></div>
+            { mode: onCancel ? 'Add a server' : 'Host a Minecraft server', basics: 'Name and version', java: 'Java', options: 'World and options', install: 'Setting up your server' }[step]}</h1></div>
         </div>
         <div className="wizard__steps" aria-hidden>{order.map((s, i) => <span key={s} className={`wizard__step ${i <= idx ? 'wizard__step--done' : ''}`} />)}</div>
 
@@ -109,6 +110,17 @@ export function SetupWizard() {
           </>}
 
           {step === 'options' && <>
+            {!(o.mode === 'existing' && folder?.hasWorld) && <div className="stack" style={{ gap: 6 }}>
+              <div className="overline">World</div>
+              <div className="cluster">
+                <Button size="sm" onClick={async () => { const f = await api.pickFile('Pick a world zip', ['zip']); if (f) { const c = await api.checkWorld(f); setWorldMsg(c.message); set({ worldSource: c.ok ? f : null }) } }}>Use a world zip…</Button>
+                <Button size="sm" onClick={async () => { const f = await api.pickFolder('Pick a world folder (it contains level.dat)'); if (f) { const c = await api.checkWorld(f); setWorldMsg(c.message); set({ worldSource: c.ok ? f : null }) } }}>Use a world folder…</Button>
+                {o.worldSource && <Button size="sm" variant="ghost" onClick={() => { set({ worldSource: null }); setWorldMsg(null) }}>Generate a new world instead</Button>}
+              </div>
+              {worldMsg && <Banner tone={o.worldSource ? 'ok' : 'error'}>{worldMsg}</Banner>}
+              {o.worldSource && <span className="field__hint">From a singleplayer world, the owner's inventory doesn't carry over (singleplayer keeps it inside the world file); everything they built stays. Worlds played on LAN or a server keep every player's inventory.</span>}
+              {!o.worldSource && o.mode === 'new' && <Field label="Seed (optional)" hint="Leave empty for a random world"><input className="input" value={o.seed ?? ''} onChange={(e) => set({ seed: e.target.value })} /></Field>}
+            </div>}
             <ToggleRow title="Allow TLauncher players (offline mode)" hint="Players without a bought Minecraft account can join. Names are then case-sensitive. You can change this later in Options." checked={o.offlineMode} onChange={(v) => set({ offlineMode: v })} disabled={o.mode === 'existing'} />
             {o.mode === 'new' && <div>
               <div className="overline" style={{ margin: '8px 0 4px' }}>Plugins</div>
@@ -125,7 +137,9 @@ export function SetupWizard() {
         </div>
 
         <div className="wizard__foot">
-          <Button variant="ghost" icon={ArrowLeft} disabled={idx === 0 || installing} onClick={() => setStep(order[Math.max(0, idx - 1)])}>Back</Button>
+          {idx === 0 && onCancel
+            ? <Button variant="ghost" icon={ArrowLeft} onClick={onCancel}>Cancel</Button>
+            : <Button variant="ghost" icon={ArrowLeft} disabled={idx === 0 || installing} onClick={() => setStep(order[Math.max(0, idx - 1)])}>Back</Button>}
           {step === 'options' ? <Button variant="primary" icon={Rocket} disabled={!canNext} onClick={install}>Set up server</Button>
             : step === 'install' ? (failed ? <Button variant="primary" onClick={install}>Try again</Button> : null)
             : <Button variant="primary" icon={ArrowRight} disabled={!canNext} onClick={() => setStep(order[idx + 1])}>Next</Button>}

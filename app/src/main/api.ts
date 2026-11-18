@@ -3,7 +3,7 @@ import { existsSync, promises as fsp } from 'node:fs'
 import path from 'node:path'
 import { app, BrowserWindow, clipboard, dialog, shell } from 'electron'
 import type { NexusApi, NexusEvent } from '@shared/types'
-import { getSettings, requireServerDir, saveSettings } from './settings'
+import { activateServer, forgetServer, getSettings, renameSaved, requireServerDir, saveSettings } from './settings'
 import { server } from './server'
 import { findPaperJar, installPaper, paperBuilds, paperVersionMeta, paperVersions } from './paper'
 import { findJava, installJava } from './java'
@@ -15,6 +15,7 @@ import { listFiles, logFiles, readLog, readText, writeText } from './files'
 import { setupFirewall, tailscaleInfo } from './network'
 import { buildFriendKit, friendKitInfo } from './friendkit'
 import { acceptEula, inspectFolder, makeServerIcon, runSetup } from './setup'
+import { guardInfo, installGuard, unlock } from './guard'
 
 export function emit(e: NexusEvent) {
   for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('nexus:event', e)
@@ -43,6 +44,7 @@ export const api: NexusApi = {
   async javaMinimum(v) { return (await paperVersionMeta(v)).javaMin },
   async installJava(major) { return installJava(major) },
   async inspectFolder(dir) { return inspectFolder(dir) },
+  async checkWorld(src) { return worlds.checkWorldSource(src) },
   async runSetup(o) {
     mustBeStopped('changing the server setup')
     try { await runSetup(o, (progress) => emit({ type: 'progress', progress })) }
@@ -69,19 +71,50 @@ export const api: NexusApi = {
     mustBeStopped('switching offline mode')
     const dir = requireServerDir()
     const report = await switchMode(dir, offline, renames)
-    // SkinsRestorer brings skins back in offline mode
-    if (offline) { try { await installPlugin(dir, 'skinsrestorer', getSettings().mcVersion); report.push('Installed SkinsRestorer so skins still show.') } catch { report.push('Could not install SkinsRestorer; skins will be default.') } }
+    // SkinsRestorer brings skins back in offline mode; NexusGuard stops players joining under each other's names
+    if (offline) {
+      try { await installPlugin(dir, 'skinsrestorer', getSettings().mcVersion); report.push('Installed SkinsRestorer so skins still show.') } catch { report.push('Could not install SkinsRestorer; skins will be default.') }
+      report.push(...(await installGuard(dir, (await getPlayers(dir, [])).whitelist)))
+    } else if (existsSync(path.join(dir, 'plugins', 'NexusGuard.jar'))) {
+      await fsp.mkdir(path.join(dir, 'plugins-disabled'), { recursive: true })
+      await fsp.rename(path.join(dir, 'plugins', 'NexusGuard.jar'), path.join(dir, 'plugins-disabled', 'NexusGuard.jar'))
+      report.push('NexusGuard turned off: online mode already checks every account.')
+    }
     return report
   },
   async setServerIcon(fromFile, text) { return makeServerIcon(requireServerDir(), fromFile, text) },
-  async serverIconData() {
-    const f = path.join(getSettings().serverDir ?? '', 'server-icon.png')
-    return existsSync(f) ? 'data:image/png;base64,' + (await fsp.readFile(f)).toString('base64') : null
+  async serverIconData(dir) {
+    const base = dir && getSettings().servers.some((s) => path.resolve(s.dir) === path.resolve(dir)) ? dir : getSettings().serverDir
+    const f = path.join(base ?? '', 'server-icon.png')
+    return base && existsSync(f) ? 'data:image/png;base64,' + (await fsp.readFile(f)).toString('base64') : null
+  },
+
+  async switchServer(id) {
+    if (server.running || server.stats.state === 'external') throw new Error('Stop the running server before switching to another one.')
+    const s = activateServer(id)
+    server.reset()
+    await server.detectExternal()
+    return s
+  },
+  async removeServer(id) {
+    if (getSettings().activeServerId === id && server.running) throw new Error('Stop this server before removing it from the list.')
+    const wasActive = getSettings().activeServerId === id
+    const s = forgetServer(id)
+    if (wasActive) server.reset()
+    return s
+  },
+  async renameServer(id, name) {
+    const n = name.trim().replace(/['"|%`]/g, '').slice(0, 40)
+    if (!n) throw new Error('Give the server a name.')
+    return renameSaved(id, n)
   },
 
   async players() { return getPlayers(requireServerDir(), server.stats.players) },
   async playerAction(action, name, reason) { await playerAction(requireServerDir(), server, action, name, reason) },
   async setWhitelistEnabled(on) { await setWhitelist(requireServerDir(), server, on) },
+  async guard() { return guardInfo(requireServerDir()) },
+  async installGuard() { const dir = requireServerDir(); return installGuard(dir, (await getPlayers(dir, [])).whitelist) },
+  async unlockName(name) { await unlock(requireServerDir(), name) },
 
   async paperBuilds(v) { return (await paperBuilds(v)).slice(0, 15).map((b) => ({ id: b.id, channel: b.channel, time: b.time })) },
   async updatePaper(version) {

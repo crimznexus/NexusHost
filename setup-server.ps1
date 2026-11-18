@@ -45,7 +45,11 @@ Write-Step '[3/5] Plugins'
 # allowCrackedLaunchers: offline mode; SkinsRestorer brings back skins, which offline mode loses
 $cracked = [bool]$cfg.allowCrackedLaunchers
 $pluginList = @($cfg.plugins)
-if ($cracked) { $pluginList += @('skinsrestorer') | Where-Object { $pluginList -notcontains $_ } }
+if ($cracked) {
+  $pluginList += @('skinsrestorer') | Where-Object { $pluginList -notcontains $_ }
+  # NexusGuard locks each name to the Tailscale account that first joins with it
+  Copy-Item (Join-Path $RepoRoot 'app\resources\plugins\NexusGuard.jar') (Join-Path $srv 'plugins\NexusGuard.jar') -Force
+}
 foreach ($slug in $pluginList) {
   $v = Get-ModrinthVersion $slug $cfg.mcVersion @('paper')
   if (-not $v) { $v = Get-ModrinthVersion $slug $cfg.mcVersion @('bukkit', 'spigot') }

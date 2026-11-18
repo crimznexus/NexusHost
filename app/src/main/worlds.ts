@@ -150,6 +150,32 @@ async function findLevelDat(root: string, depth = 0): Promise<string | null> {
 }
 
 /** Imports a world from a .zip or a folder that contains level.dat. Backs up the current world first. */
+/** Checks a world zip or folder before importing: it must contain level.dat within a few folders. */
+export async function checkWorldSource(source: string): Promise<{ ok: boolean; name: string; size: number; message: string }> {
+  if (!existsSync(source)) return { ok: false, name: '', size: 0, message: 'File not found.' }
+  if (source.toLowerCase().endsWith('.zip')) {
+    const entries = await new Promise<{ names: string[]; size: number }>((resolve, reject) => {
+      yauzl.open(source, { lazyEntries: true }, (err, zip) => {
+        if (err || !zip) return reject(err ?? new Error('Not a valid zip file.'))
+        const names: string[] = []; let size = 0
+        zip.on('entry', (e: yauzl.Entry) => { names.push(e.fileName); size += e.uncompressedSize; zip.readEntry() })
+        zip.on('end', () => resolve({ names, size }))
+        zip.on('error', reject)
+        zip.readEntry()
+      })
+    }).catch((e) => ({ names: [] as string[], size: 0, error: e.message as string }))
+    if ('error' in entries) return { ok: false, name: '', size: 0, message: `Could not read the zip: ${entries.error}` }
+    const hit = entries.names.map((n) => n.replace(/\\/g, '/')).filter((n) => /(^|\/)level\.dat$/.test(n) && !n.startsWith('__MACOSX') && n.split('/').length <= 5)
+      .sort((a, b) => a.split('/').length - b.split('/').length)[0]
+    if (!hit) return { ok: false, name: '', size: entries.size, message: 'No level.dat in this zip, so it is not a Minecraft world.' }
+    const parts = hit.split('/'); const name = parts.length > 1 ? parts[parts.length - 2] : path.basename(source, '.zip')
+    return { ok: true, name, size: entries.size, message: `World "${name}" found` }
+  }
+  const found = await findLevelDat(source).catch(() => null)
+  if (!found) return { ok: false, name: '', size: 0, message: 'No level.dat in this folder, so it is not a Minecraft world.' }
+  return { ok: true, name: path.basename(found), size: await dirSize(found), message: `World "${path.basename(found)}" found` }
+}
+
 export async function importWorld(dir: string, srv: ServerManager, source: string) {
   if (srv.running) throw new Error('Stop the server before importing a world.')
   const level = (await readProperties(dir))['level-name'] || 'world'
