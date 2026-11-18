@@ -1,6 +1,6 @@
 // Dev-only fake backend so the UI can be reviewed in a normal browser. Never bundled in production
 // because api.ts imports it only when import.meta.env.DEV is true.
-import type { AppSettings, LogLine, NexusEvent, ServerStats } from '@shared/types'
+import type { AppSettings, LogLine, NexusEvent, SavedServer, ServerStats } from '@shared/types'
 import iconUrl from '../../../../resources/icon.png?url'
 
 const listeners = new Set<(e: NexusEvent) => void>()
@@ -26,9 +26,17 @@ const logs: LogLine[] = [
   line('[21:08:00 INFO]: [Chunky] Task running for world. Processed: 61.2% (4,519/7,381), ETA: 0:04:12')
 ]
 const setup = new URLSearchParams(location.search).has('setup')
+const demoServers: SavedServer[] = [
+  { id: 'friends', name: 'Friends Server', dir: 'C:\\Servers\\friends', mcVersion: '26.3', memoryGB: 8, javaPath: 'C:\\Program Files\\Eclipse Adoptium\\jdk-25\\bin\\java.exe', javaFlags: [], iconText: 'NEXUS', backups: { daily: true, keep: 7, lastRun: new Date().toISOString() } },
+  { id: 'creative', name: 'Creative Builds', dir: 'C:\\Servers\\creative', mcVersion: '26.3', memoryGB: 4, javaPath: null, javaFlags: [], iconText: 'BUILD', backups: { daily: false, keep: 7, lastRun: null } },
+  { id: 'hardcore', name: 'Hardcore Weekend', dir: 'D:\\Minecraft\\hardcore', mcVersion: '26.2', memoryGB: 6, javaPath: null, javaFlags: [], iconText: 'HC', backups: { daily: true, keep: 3, lastRun: null } }
+]
+const activeId = (() => { try { return sessionStorage.getItem('mock-active') || 'friends' } catch { return 'friends' } })()
+const act = demoServers.find((s) => s.id === activeId) ?? demoServers[0]
 let settings: AppSettings = {
-  serverDir: setup ? null : 'C:\\Servers\\friends', serverName: 'Friends Server', mcVersion: '26.3', memoryGB: 8, javaPath: 'C:\\Program Files\\Eclipse Adoptium\\jdk-25\\bin\\java.exe', javaFlags: [],
-  iconText: 'NEXUS', autoStartServer: false, startWithWindows: false, closeToTray: true, autoRestart: true, autoStopMinutes: 0, backups: { daily: true, keep: 7, lastRun: new Date().toISOString() }
+  servers: demoServers, activeServerId: setup ? null : act.id,
+  serverDir: setup ? null : act.dir, serverName: act.name, mcVersion: act.mcVersion, memoryGB: act.memoryGB, javaPath: act.javaPath, javaFlags: [],
+  iconText: act.iconText, autoStartServer: false, startWithWindows: false, closeToTray: true, autoRestart: true, autoStopMinutes: 0, backups: act.backups
 }
 let stats: ServerStats = { state: 'online', pid: 1234, startedAt: Date.now() - 3600_000 * 2.3, cpu: 14, memoryMB: 8550, heapUsedMB: 3180, heapMaxMB: 8192, tps: 20.0, players: ['steve', 'alex', 'maya'], maxPlayers: 12, lastExitCode: null, emptySince: null }
 const props: Record<string, string> = { motd: 'Friends Server', 'max-players': '12', difficulty: 'easy', gamemode: 'survival', pvp: 'true', 'white-list': 'true', 'online-mode': 'false', 'view-distance': '10', 'simulation-distance': '8', 'spawn-protection': '16', hardcore: 'false', 'allow-flight': 'false', 'level-seed': '', 'server-port': '25565' }
@@ -57,6 +65,9 @@ const impl: Record<string, (...a: any[]) => any> = {
   setOfflineMode: () => ['steve: data moved', 'Switched to offline mode.'], setServerIcon: () => 'ok', serverIconData: () => iconUrl,
   players: () => ({ online: stats.players, whitelist: [{ uuid: '5f1c2a9e-0b7d-3c41-9a8e-2d6f4b1c7e30', name: 'steve' }, { uuid: '8a2e4f10-6c3b-3d7a-b1f9-0e5c2a7d9b42', name: 'alex' }, { uuid: 'c4d71b3e-9f2a-3e60-8b14-7a5d0c2f6e91', name: 'maya' }, { uuid: '1e9b5c7a-2d4f-3a81-9c06-b3f8e2a4d157', name: 'jonas' }, { uuid: '6b3f8d2c-1a7e-3f94-a2c5-9d0e7b4a1c68', name: 'priya' }], ops: [{ uuid: '5f1c2a9e-0b7d-3c41-9a8e-2d6f4b1c7e30', name: 'steve', level: 4 }], banned: [], bannedIps: [], known: [], whitelistEnabled: true, onlineMode: false }),
   playerAction: () => {}, setWhitelistEnabled: () => {},
+  switchServer: (id: string) => { try { sessionStorage.setItem('mock-active', id) } catch { /* */ } return settings },
+  removeServer: (id: string) => (settings = { ...settings, servers: settings.servers.filter((s) => s.id !== id) }),
+  renameServer: (id: string, name: string) => (settings = { ...settings, servers: settings.servers.map((s) => (s.id === id ? { ...s, name } : s)) }),
   guard: () => ({ installed: true, locks: [['steve', 'Steve R.', 'steve-pc'], ['alex', 'Alex K.', 'alex-laptop'], ['maya', 'Maya P.', 'maya-desktop']].map(([name, tailscaleName, device]) => ({ name, tailscaleName, device, tailscaleLogin: '', userId: '1', lockedAt: '' })) }),
   installGuard: () => ['NexusGuard installed.'], unlockName: () => {},
   paperBuilds: () => [{ id: 253, channel: 'STABLE', time: '2026-11-15T17:14:05Z' }, { id: 252, channel: 'STABLE', time: '2026-11-14T10:00:00Z' }],

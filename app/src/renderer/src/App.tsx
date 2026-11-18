@@ -1,6 +1,6 @@
 import { useEffect, useState, type ComponentType } from 'react'
 import {
-  Archive, Boxes, Cpu, FileText, FolderTree, Gauge, Globe2, Play, Puzzle, ScrollText, Settings as SettingsIcon, SlidersHorizontal, Square, SquareTerminal, Users
+  Archive, Boxes, Cpu, FolderTree, Gauge, Globe2, Play, Puzzle, ScrollText, Settings as SettingsIcon, SlidersHorizontal, Square, SquareTerminal, Users
 } from 'lucide-react'
 import { useStore } from './lib/store'
 import { api } from './lib/api'
@@ -19,9 +19,10 @@ import { LogsPage } from './pages/Logs'
 import { SettingsPage } from './pages/Settings'
 import { SetupWizard } from './pages/Setup'
 import { Showcase } from './pages/Showcase'
+import { ServerSwitcher } from './components/ServerSwitcher'
 
 export type PageId = 'dashboard' | 'console' | 'players' | 'options' | 'software' | 'plugins' | 'worlds' | 'backups' | 'friends' | 'files' | 'logs' | 'settings'
-export interface PageProps { go: (p: PageId) => void }
+export interface PageProps { go: (p: PageId) => void; addServer: () => void }
 
 const NAV: { group?: string; id: PageId; label: string; icon: ComponentType<{ size?: number; strokeWidth?: number }>; page: ComponentType<PageProps>; flush?: boolean }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: Gauge, page: Dashboard },
@@ -41,13 +42,15 @@ const NAV: { group?: string; id: PageId; label: string; icon: ComponentType<{ si
 export function App() {
   const { settings, stats, act } = useStore()
   const [page, setPage] = useState<PageId>(() => (sessionStorage.getItem('page') as PageId) || 'dashboard')
-  const [icon, setIcon] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
   useEffect(() => { try { sessionStorage.setItem('page', page) } catch { /* private mode */ } }, [page])
-  useEffect(() => { if (settings?.serverDir) api.serverIconData().then(setIcon).catch(() => {}) }, [settings?.serverDir])
 
   if (import.meta.env.DEV && new URLSearchParams(location.search).has('showcase')) return <><Showcase /><DialogHost /><Toasts /></>
   if (!settings) return null
-  if (!settings.serverDir) return <><SetupWizard /><DialogHost /><Toasts /></>
+  // a new server becomes the active one: reload so every page starts fresh for it
+  const onSetupDone = () => { try { sessionStorage.setItem('page', 'dashboard') } catch { /* private mode */ } location.reload() }
+  if (!settings.serverDir) return <><SetupWizard onDone={onSetupDone} /><DialogHost /><Toasts /></>
+  if (adding) return <><SetupWizard onDone={onSetupDone} onCancel={() => setAdding(false)} /><DialogHost /><Toasts /></>
 
   const current = NAV.find((n) => n.id === page) ?? NAV[0]
   const Page = current.page
@@ -57,13 +60,7 @@ export function App() {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand">
-          {icon ? <img src={icon} alt="" /> : <span className="avatar" aria-hidden><FileText size={16} /></span>}
-          <div style={{ minWidth: 0 }}>
-            <div className="brand__name truncate">{settings.serverName}</div>
-            <div className="brand__sub">NexusHost</div>
-          </div>
-        </div>
+        <ServerSwitcher onAdd={() => setAdding(true)} />
         <nav className="nav" aria-label="Sections">
           {NAV.map((n) => (
             <div key={n.id} style={{ display: 'contents' }}>
@@ -87,7 +84,7 @@ export function App() {
             : <ActionButton variant="primary" icon={Play} disabled={stats.state === 'external'} onAction={() => act(() => api.start())}>Start</ActionButton>}
         </header>
         <div className={`page ${current.flush ? 'page--flush' : ''}`}>
-          {current.flush ? <Page go={setPage} /> : <div className="page__inner" key={page}><Page go={setPage} /></div>}
+          {current.flush ? <Page go={setPage} addServer={() => setAdding(true)} /> : <div className="page__inner" key={page}><Page go={setPage} addServer={() => setAdding(true)} /></div>}
         </div>
       </main>
       <DialogHost />

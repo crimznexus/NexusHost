@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { Coffee, FolderOpen, FolderSearch } from 'lucide-react'
+import { Coffee, FolderOpen, FolderSearch, Pencil, Plus, Server, Trash2 } from 'lucide-react'
 import type { AppSettings } from '@shared/types'
+import type { PageProps } from '@/App'
 import { api } from '@/lib/api'
 import { useLoad, useStore } from '@/lib/store'
-import { ActionButton, Banner, Button, Field, Panel, ToggleRow, confirmDialog } from '@/components/ui'
+import { ActionButton, Button, Field, Panel, ToggleRow, confirmDialog, promptDialog } from '@/components/ui'
 
-export function SettingsPage() {
+export function SettingsPage({ addServer }: PageProps) {
   const { settings, setSettings, stats, act, toast } = useStore()
   const sys = useLoad(() => api.systemInfo())
   const [name, setName] = useState(settings?.serverName ?? '')
@@ -59,11 +60,35 @@ export function SettingsPage() {
         </div>
       </Panel>
 
-      <Panel title="Use a different server" sub="Point NexusHost at another server folder or set up a new one. The current folder is not deleted.">
-        {running && <Banner tone="warn">Stop the server first.</Banner>}
-        <Button disabled={running} onClick={async () => {
-          if (await confirmDialog({ title: 'Run setup again?', body: 'You can pick an existing server folder or create a new one.', confirm: 'Open setup' })) setSettings(await api.saveSettings({ serverDir: null }))
-        }}>Run setup again…</Button>
+      <Panel title="Servers" sub="Every server NexusHost manages. One runs at a time; switch from the menu at the top of the sidebar." tight
+        actions={<Button icon={Plus} disabled={running} onClick={addServer}>Add server</Button>}>
+        <div className="rows">
+          {settings.servers.map((s) => {
+            const isActive = s.id === settings.activeServerId
+            return (
+              <div className="row" key={s.id}>
+                <span className="avatar"><Server size={16} /></span>
+                <div style={{ minWidth: 0 }}>
+                  <div className="cluster" style={{ flexWrap: 'nowrap' }}><span className="row__title truncate">{s.name}</span>{isActive && <span className="tag tag--accent">active</span>}</div>
+                  <div className="row__meta mono truncate">{s.mcVersion ? `Paper ${s.mcVersion} · ` : ''}{s.memoryGB} GB · {s.dir}</div>
+                </div>
+                <div className="row__actions">
+                  {!isActive && <ActionButton size="sm" disabled={running} onAction={async () => { const r = await act(() => api.switchServer(s.id)); if (r) location.reload() }}>Switch</ActionButton>}
+                  <Button size="sm" variant="ghost" icon={Pencil} label="Rename" onClick={async () => {
+                    const n = await promptDialog({ title: 'Rename server', label: 'Name', value: s.name, confirm: 'Rename' })
+                    if (n) { const r = await act(() => api.renameServer(s.id, n)); if (r) setSettings(r) }
+                  }} />
+                  <Button size="sm" variant="ghost" icon={FolderOpen} label="Open folder" onClick={() => api.openPath(s.dir)} />
+                  <Button size="sm" variant="ghost" icon={Trash2} label="Remove from list" disabled={isActive && running} onClick={async () => {
+                    if (!(await confirmDialog({ title: `Remove ${s.name} from NexusHost?`, body: `Only the list entry goes. The server folder, world and backups stay in ${s.dir}, and you can add it back with "Add server".`, confirm: 'Remove', danger: true }))) return
+                    const r = await act(() => api.removeServer(s.id))
+                    if (r) { if (isActive) location.reload(); else setSettings(r) }
+                  }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </Panel>
       <p className="caption faint">NexusHost {sys.data?.appVersion} · settings in <span className="mono wrap-any">{sys.data?.userData}</span></p>
     </>

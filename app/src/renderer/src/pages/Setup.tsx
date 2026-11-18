@@ -14,7 +14,7 @@ const PLUGINS = [
 
 type Step = 'mode' | 'basics' | 'java' | 'options' | 'install'
 
-export function SetupWizard() {
+export function SetupWizard({ onDone, onCancel }: { onDone?: () => void; onCancel?: () => void }) {
   const { setSettings, progress, toast } = useStore()
   const sys = useLoad(() => api.systemInfo())
   const versions = useLoad(() => api.paperVersions())
@@ -50,7 +50,7 @@ export function SetupWizard() {
 
   const install = async () => {
     setStep('install'); setInstalling(true); setFailed(null)
-    try { await api.runSetup(o); setSettings(await api.getSettings()); toast('success', 'Your server is ready') }
+    try { await api.runSetup(o); toast('success', 'Your server is ready'); if (onDone) onDone(); else setSettings(await api.getSettings()) }
     catch (e: any) { setFailed(e.message) } finally { setInstalling(false) }
   }
 
@@ -60,7 +60,7 @@ export function SetupWizard() {
         <div className="wizard__head">
           <Beacon state={installing ? 'starting' : 'stopped'} />
           <div><div className="overline">NexusHost setup</div><h1 className="hero__name" style={{ fontSize: 24 }}>{
-            { mode: 'Host a Minecraft server', basics: 'Name and version', java: 'Java', options: 'How friends join', install: 'Setting up your server' }[step]}</h1></div>
+            { mode: onCancel ? 'Add a server' : 'Host a Minecraft server', basics: 'Name and version', java: 'Java', options: 'How friends join', install: 'Setting up your server' }[step]}</h1></div>
         </div>
         <div className="wizard__steps" aria-hidden>{order.map((s, i) => <span key={s} className={`wizard__step ${i <= idx ? 'wizard__step--done' : ''}`} />)}</div>
 
@@ -125,7 +125,9 @@ export function SetupWizard() {
         </div>
 
         <div className="wizard__foot">
-          <Button variant="ghost" icon={ArrowLeft} disabled={idx === 0 || installing} onClick={() => setStep(order[Math.max(0, idx - 1)])}>Back</Button>
+          {idx === 0 && onCancel
+            ? <Button variant="ghost" icon={ArrowLeft} onClick={onCancel}>Cancel</Button>
+            : <Button variant="ghost" icon={ArrowLeft} disabled={idx === 0 || installing} onClick={() => setStep(order[Math.max(0, idx - 1)])}>Back</Button>}
           {step === 'options' ? <Button variant="primary" icon={Rocket} disabled={!canNext} onClick={install}>Set up server</Button>
             : step === 'install' ? (failed ? <Button variant="primary" onClick={install}>Try again</Button> : null)
             : <Button variant="primary" icon={ArrowRight} disabled={!canNext} onClick={() => setStep(order[idx + 1])}>Next</Button>}

@@ -86,7 +86,8 @@ export async function runSetup(o: SetupOptions, progress: (p: TaskProgress) => v
 
   step('Saving')
   const jar = findPaperJar(o.dir)
-  saveSettings({ serverDir: o.dir, serverName: o.serverName, mcVersion: jar?.version ?? o.mcVersion, memoryGB: o.memoryGB, javaPath: java.path, javaFlags: meta.flags })
+  // activeServerId null: becomes a new list entry (or the existing entry for this folder), not a rename of the current one
+  saveSettings({ activeServerId: null, serverDir: o.dir, serverName: o.serverName, mcVersion: jar?.version ?? o.mcVersion, memoryGB: o.memoryGB, javaPath: java.path, javaFlags: meta.flags })
   progress({ task: 'setup', label: 'Done', done: steps, total: steps, finished: true })
 }
 

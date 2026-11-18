@@ -3,7 +3,7 @@ import { existsSync, promises as fsp } from 'node:fs'
 import path from 'node:path'
 import { app, BrowserWindow, clipboard, dialog, shell } from 'electron'
 import type { NexusApi, NexusEvent } from '@shared/types'
-import { getSettings, requireServerDir, saveSettings } from './settings'
+import { activateServer, forgetServer, getSettings, renameSaved, requireServerDir, saveSettings } from './settings'
 import { server } from './server'
 import { findPaperJar, installPaper, paperBuilds, paperVersionMeta, paperVersions } from './paper'
 import { findJava, installJava } from './java'
@@ -82,9 +82,30 @@ export const api: NexusApi = {
     return report
   },
   async setServerIcon(fromFile, text) { return makeServerIcon(requireServerDir(), fromFile, text) },
-  async serverIconData() {
-    const f = path.join(getSettings().serverDir ?? '', 'server-icon.png')
-    return existsSync(f) ? 'data:image/png;base64,' + (await fsp.readFile(f)).toString('base64') : null
+  async serverIconData(dir) {
+    const base = dir && getSettings().servers.some((s) => path.resolve(s.dir) === path.resolve(dir)) ? dir : getSettings().serverDir
+    const f = path.join(base ?? '', 'server-icon.png')
+    return base && existsSync(f) ? 'data:image/png;base64,' + (await fsp.readFile(f)).toString('base64') : null
+  },
+
+  async switchServer(id) {
+    if (server.running || server.stats.state === 'external') throw new Error('Stop the running server before switching to another one.')
+    const s = activateServer(id)
+    server.reset()
+    await server.detectExternal()
+    return s
+  },
+  async removeServer(id) {
+    if (getSettings().activeServerId === id && server.running) throw new Error('Stop this server before removing it from the list.')
+    const wasActive = getSettings().activeServerId === id
+    const s = forgetServer(id)
+    if (wasActive) server.reset()
+    return s
+  },
+  async renameServer(id, name) {
+    const n = name.trim().replace(/['"|%`]/g, '').slice(0, 40)
+    if (!n) throw new Error('Give the server a name.')
+    return renameSaved(id, n)
   },
 
   async players() { return getPlayers(requireServerDir(), server.stats.players) },

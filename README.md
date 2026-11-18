@@ -35,6 +35,7 @@ npm run dev
 
 | Page | What it does |
 |---|---|
+| Server switcher | Several servers in one app: add new or existing server folders, switch between them (one runs at a time), rename, remove from the list |
 | Dashboard | Status beacon, Tailscale address, players, TPS, CPU and memory, recent console |
 | Console | Live output, command box with history, quick commands |
 | Players | Online players (kick, op, ban), whitelist, operators, bans; works while stopped too |

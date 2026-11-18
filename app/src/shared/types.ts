@@ -2,7 +2,22 @@
 
 export type ServerState = 'stopped' | 'starting' | 'online' | 'stopping' | 'crashed' | 'external'
 
+/** One server NexusHost knows about. The active one is mirrored into the top-level AppSettings fields. */
+export interface SavedServer {
+  id: string
+  name: string
+  dir: string
+  mcVersion: string
+  memoryGB: number
+  javaPath: string | null
+  javaFlags: string[]
+  iconText: string
+  backups: { daily: boolean; keep: number; lastRun: string | null }
+}
+
 export interface AppSettings {
+  servers: SavedServer[]
+  activeServerId: string | null
   serverDir: string | null
   serverName: string
   mcVersion: string
@@ -166,7 +181,11 @@ export interface NexusApi {
   setProperties(patch: Record<string, string>): Promise<void>
   setOfflineMode(offline: boolean, renames: Record<string, string>): Promise<string[]>
   setServerIcon(fromFile: string | null, text: string | null): Promise<string>
-  serverIconData(): Promise<string | null>
+  serverIconData(dir?: string): Promise<string | null>
+  // server list
+  switchServer(id: string): Promise<AppSettings>
+  removeServer(id: string): Promise<AppSettings>
+  renameServer(id: string, name: string): Promise<AppSettings>
   // players
   players(): Promise<PlayerLists>
   playerAction(action: 'whitelist-add' | 'whitelist-remove' | 'op' | 'deop' | 'kick' | 'ban' | 'pardon' | 'pardon-ip', name: string, reason?: string): Promise<void>

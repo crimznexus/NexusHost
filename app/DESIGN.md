@@ -111,6 +111,11 @@ Shell: **fixed-sidenav-shell**. Grid columns `232px 1fr`, height `100dvh`. Sideb
 ### Progress
 - 4px bar track surface-2, fill accent (transform scaleX). Indeterminate: sliding segment.
 
+### ServerSwitcher + Menu
+- Sidebar header button (server icon, name, server count, chevrons) opening a Menu popover: surface-3, radius `--r-lg`, shadow-3, 300px wide.
+- Menu items: icon + title + caption (version and folder); the active server has wash-2 fill and a check glyph (never a coloured edge). Disabled items (another server running) at .45 opacity with a note below.
+- Closes on outside click and Esc. Layout: absolute overlay below the header; the sidebar nav keeps its own scroll.
+
 ### Tabs (segmented)
 - Pill group on surface-2; selected segment surface-1 + shadow subtle.
 
