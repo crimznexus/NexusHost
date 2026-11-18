@@ -9,7 +9,7 @@ export default defineConfig({
     build: {
       rollupOptions: {
         input: process.env.NEXUS_SMOKE_BUILD
-          ? { index: resolve('src/main/index.ts'), smoke: resolve('src/main/smoke.ts'), 'smoke-servers': resolve('src/main/smoke-servers.ts') }
+          ? { index: resolve('src/main/index.ts'), smoke: resolve('src/main/smoke.ts'), 'smoke-servers': resolve('src/main/smoke-servers.ts'), 'smoke-world': resolve('src/main/smoke-world.ts') }
           : { index: resolve('src/main/index.ts') }
       }
     }

@@ -61,7 +61,7 @@ export function SetupWizard({ onDone, onCancel }: { onDone?: () => void; onCance
         <div className="wizard__head">
           <Beacon state={installing ? 'starting' : 'stopped'} />
           <div><div className="overline">NexusHost setup</div><h1 className="hero__name" style={{ fontSize: 24 }}>{
-            { mode: onCancel ? 'Add a server' : 'Host a Minecraft server', basics: 'Name and version', java: 'Java', options: 'How friends join', install: 'Setting up your server' }[step]}</h1></div>
+            { mode: onCancel ? 'Add a server' : 'Host a Minecraft server', basics: 'Name and version', java: 'Java', options: 'World and options', install: 'Setting up your server' }[step]}</h1></div>
         </div>
         <div className="wizard__steps" aria-hidden>{order.map((s, i) => <span key={s} className={`wizard__step ${i <= idx ? 'wizard__step--done' : ''}`} />)}</div>
 
@@ -118,6 +118,7 @@ export function SetupWizard({ onDone, onCancel }: { onDone?: () => void; onCance
                 {o.worldSource && <Button size="sm" variant="ghost" onClick={() => { set({ worldSource: null }); setWorldMsg(null) }}>Generate a new world instead</Button>}
               </div>
               {worldMsg && <Banner tone={o.worldSource ? 'ok' : 'error'}>{worldMsg}</Banner>}
+              {o.worldSource && <span className="field__hint">From a singleplayer world, the owner's inventory doesn't carry over (singleplayer keeps it inside the world file); everything they built stays. Worlds played on LAN or a server keep every player's inventory.</span>}
               {!o.worldSource && o.mode === 'new' && <Field label="Seed (optional)" hint="Leave empty for a random world"><input className="input" value={o.seed ?? ''} onChange={(e) => set({ seed: e.target.value })} /></Field>}
             </div>}
             <ToggleRow title="Allow TLauncher players (offline mode)" hint="Players without a bought Minecraft account can join. Names are then case-sensitive. You can change this later in Options." checked={o.offlineMode} onChange={(v) => set({ offlineMode: v })} disabled={o.mode === 'existing'} />

@@ -45,7 +45,7 @@ const impl: Record<string, (...a: any[]) => any> = {
   getSettings: () => settings,
   saveSettings: (p: Partial<AppSettings>) => (settings = { ...settings, ...p }),
   systemInfo: () => ({ totalMemGB: 16, platform: 'win32', appVersion: '2.0.0', userData: 'C:\\Users\\you\\AppData\\Roaming\\NexusHost' }),
-  pickFolder: () => 'C:\\Servers\\new', pickFile: () => null, openPath: () => {}, openExternal: () => {}, copyText: (t: string) => navigator.clipboard?.writeText(t),
+  pickFolder: () => 'C:\\Servers\\new', pickFile: () => 'C:\\Users\\you\\Downloads\\My Survival World.zip', openPath: () => {}, openExternal: () => {}, copyText: (t: string) => navigator.clipboard?.writeText(t),
   paperVersions: () => ({ versions: ['26.3', '26.2', '26.1.2', '1.21.11', '1.21.10'], latest: '26.3' }),
   findJava: () => ({ path: 'C:\\Program Files\\Eclipse Adoptium\\jdk-25\\bin\\java.exe', major: 25 }),
   javaMinimum: () => 25, installJava: () => {},
