@@ -1,0 +1,30 @@
+appId: io.github.crimznexus.nexushost
+productName: NexusHost
+directories:
+  output: release
+  buildResources: resources
+files:
+  - out/**
+  - package.json
+extraResources:
+  - from: resources
+    to: resources
+  - from: ../scripts/installer-template.ps1
+    to: resources/installer-template.ps1
+  - from: ../scripts/firewall.ps1
+    to: resources/firewall.ps1
+  - from: ../scripts/make-icon.ps1
+    to: resources/make-icon.ps1
+  - from: ../mods
+    to: resources/mods
+win:
+  icon: resources/icon.png
+  target:
+    - target: nsis
+    - target: portable
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+portable:
+  artifactName: NexusHost-${version}-portable.exe

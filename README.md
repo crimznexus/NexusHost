@@ -1,134 +1,127 @@
-# NexusHost | Phase I: The Nexus Connection
+# NexusHost
 
-NexusHost is a modern, real-time game server hosting dashboard. **Phase I: The Nexus Connection** establishes a robust, bidirectional heartbeat system between a remote Windows Engine and a central Hub.
+Turn a Windows PC or laptop into a Minecraft Java server for you and your friends, even behind CGNAT, with no port forwarding and no tunnel service.
 
-## 🏗️ Architecture
+- **NexusHost app** (Windows): a control panel for the whole server. Setup wizard, start/stop, live console, players, server options, Paper versions, a Modrinth plugin browser, worlds, backups, file editor, logs, and the friend installer. It runs from the system tray so the server keeps going when the window is closed.
+- **Paper** server, downloaded and updated for you
+- **Tailscale** for the connection: each friend joins your private network with their own free account, and you share only the server PC with them
+- A **one-click `.bat` installer** for friends that sets up Fabric, performance mods, a minimap, shaders and voice chat, and adds the server to their Multiplayer list
+- Server plugins: **BlueMap** (live 3D web map), **Simple Voice Chat**, **AxGraves**, **Chunky**
+- Optional **TLauncher / non-premium support**: one switch turns on offline mode, installs SkinsRestorer and moves existing players' saves ([details](docs/HOSTING.md#letting-tlauncher-non-premium-players-join))
 
-The system consists of three distinct components:
+The PowerShell scripts below do the same jobs from the command line, for people who prefer that.
 
-1.  **Hub (`/nexushost/hub`)**: A central message broker implemented with Node.js, Express, and Socket.io. It validates incoming telemetry and relays state to the Dashboard.
-2.  **Engine (`/nexushost/engine`)**: A headless Node.js client running on the target Windows machine. It uses the `systeminformation` package to collect real-time hardware stats (CPU Load, RAM Usage) and streams them to the Hub.
-3.  **Dashboard (`/nexushost/dashboard`)**: A premium React 19 UI built with Vite, Tailwind CSS, and Lucide icons. It displays live hardware gauges and provides an interface for remote commands.
+## The app
 
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js v24+ LTS
-- Windows environment (for Engine stats collection)
-
-### 1. Hub Setup
 ```bash
-cd nexushost/hub
+cd app
+```
+
+```bash
 npm install
+```
+
+```bash
 npm run dev
 ```
-*Server runs on `http://localhost:3001`.*
 
-### 2. Dashboard Setup
-```bash
-cd nexushost/dashboard
-npm install
-npm run dev
+`npm run dist` builds an installer and a portable `.exe` into `app/release/`. On first launch the setup wizard either creates a new server or adopts an existing server folder (worlds and settings are kept). App settings live in `%APPDATA%\NexusHost`.
+
+| Page | What it does |
+|---|---|
+| Dashboard | Status beacon, Tailscale address, players, TPS, CPU and memory, recent console |
+| Console | Live output, command box with history, quick commands |
+| Players | Online players (kick, op, ban), whitelist, operators, bans; works while stopped too |
+| Options | server.properties as a form, offline mode (TLauncher) switch, server icon, EULA |
+| Software | Paper version and build, updates, switching Minecraft versions (with a backup first) |
+| Plugins | Installed plugins with update checks, on/off, remove, and Modrinth search and install |
+| Worlds | World size, import from zip or folder, export, reset with a seed, datapacks |
+| Backups | Manual and daily backups (consistent while running), restore, retention |
+| Friends & access | Tailscale status, share steps, firewall setup, friend mod installer |
+| Files / Logs | Text editor for configs, log viewer with filter (including old `.log.gz` files) |
+| App settings | RAM, Java, start with Windows, auto-start, tray, crash restart, auto-stop when empty |
+
+The UI design rules are in [app/DESIGN.md](app/DESIGN.md).
+
+```mermaid
+flowchart LR
+  subgraph Host PC
+    P[Paper server :25565] --- BM[BlueMap :8100]
+    P --- VC[Voice chat :24454/udp]
+    FW[Windows Firewall<br/>Tailscale range only]
+  end
+  F1[Friend PC<br/>Fabric + mods] -- Tailscale --> FW
+  F2[Friend PC] -- Tailscale --> FW
+  FW --> P
 ```
-*Frontend runs on `http://localhost:3000`.*
 
-### 3. Engine Setup
+Tested with Minecraft 26.3, Paper build 253 and Fabric Loader 0.20.1 with 6-10 players on a laptop.
+
+> **v2 note:** NexusHost v1 (Docker + Node hub/engine + Electron dashboard + Playit.gg/Localtunnel) was replaced by this simpler setup. It's still in the git history at commit `92983b4`.
+
+## Requirements
+
+- Windows 10 or 11 with 8 GB+ RAM free for the server
+- [PowerShell 7](https://aka.ms/powershell): `winget install Microsoft.PowerShell`
+- Java 25 for Minecraft 26.x: `winget install EclipseAdoptium.Temurin.25.JDK` (setup finds it and tells you if it's missing)
+- [Tailscale](https://tailscale.com/download), signed in with your account
+
+## Host quick start
+
 ```bash
-cd nexushost/engine
-npm install
-npm run dev
+git clone https://github.com/crimznexus/NexusHost
 ```
-*Stats collection begins and streams to the Hub.*
 
-## 📡 Event Contract
-
-| Event | Direction | Payload |
-|---|---|---|
-| `ENGINE_CONNECT` | Engine → Hub | - |
-| `DASHBOARD_CONNECT`| Dashboard → Hub | - |
-| `HEARTBEAT` | Engine → Hub → Dashboard | `{ cpuLoad, ramUsed, ramTotal, timestamp }` |
-| `TEST_START` | Dashboard → Hub → Engine | - |
-| `ENGINE_STATUS` | Hub → Dashboard | `{ online: boolean }` |
-| `TUNNEL_URL` | Engine → Hub → Dashboard | Playit.gg public address (e.g., `xxxxx.at.playit.gg`) |
-
-## 🔗 Public Access (Playit.gg)
-
-The engine now uses **Playit.gg** to expose the Minecraft server (port 25565) to the internet via a secure TCP tunnel.
-
-1. When the server starts, the engine automatically downloads `playit.exe` if missing.
-2. It launches the tunnel with `playit.exe --secret_path <path> --stdout start`.
-3. The engine parses the output for a claim URL (`.../claim/...`).
-4. **Action Required**: Click the claim URL in the Dashboard to associate the tunnel with your Playit.gg account. After claiming, the dashboard will display the active address (e.g., `abcd1234.at.playit.gg`).
-5. Use this address in the Minecraft client to connect to your server.
-
-## 🛠️ Tech Stack
-
-- **Frontend**: React 19, Vite, Tailwind CSS, Lucide Icons, Socket.io-client
-- **Backend**: Node.js, Express.js, Socket.io
-- **Hardware Stats**: `systeminformation`
-- **Language**: TypeScript (Strict Mode)
-
----
-*Created by Antigravity for crimznexus.*
-
-NexusHost is a modern, real-time game server hosting dashboard. **Phase I: The Nexus Connection** establishes a robust, bidirectional heartbeat system between a remote Windows Engine and a central Hub.
-
-## 🏗️ Architecture
-
-The system consists of three distinct components:
-
-1.  **Hub (`/nexushost/hub`)**: A central message broker implemented with Node.js, Express, and Socket.io. It validates incoming telemetry and relays state to the Dashboard.
-2.  **Engine (`/nexushost/engine`)**: A headless Node.js client running on the target Windows machine. It uses the `systeminformation` package to collect real-time hardware stats (CPU Load, RAM Usage) and streams them to the Hub.
-3.  **Dashboard (`/nexushost/dashboard`)**: A premium React 19 UI built with Vite, Tailwind CSS, and Lucide icons. It displays live hardware gauges and provides an interface for remote commands.
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Node.js v24+ LTS
-- Windows environment (for Engine stats collection)
-
-### 1. Hub Setup
 ```bash
-cd nexushost/hub
-npm install
-npm run dev
+cd NexusHost
 ```
-*Server runs on `http://localhost:3001`.*
 
-### 2. Dashboard Setup
-```bash
-cd nexushost/dashboard
-npm install
-npm run dev
-```
-*Frontend runs on `http://localhost:3000`.*
+1. Copy `nexus.config.example.json` to `nexus.config.json` and set at least `serverName`, `memoryGB` and `iconText`. Leave `tailscaleHost` empty to use this PC's Tailscale IP automatically.
+2. Download Paper, plugins and datapacks, and create `server\start.bat`:
+   ```bash
+   pwsh -File setup-server.ps1
+   ```
+   It asks you to accept the [Minecraft EULA](https://aka.ms/MinecraftEULA) the first time.
+3. Open the ports to Tailscale only, from an **admin** PowerShell (once):
+   ```bash
+   pwsh -File scripts\firewall.ps1
+   ```
+4. Start the server with `server\start.bat`. In its console: `whitelist add <friend>` and `op <you>`.
+5. Build the friend installer and join guide:
+   ```bash
+   pwsh -File build-installer.ps1
+   ```
+   Send `dist\Install-<Name>-Mods.bat` and `dist\FRIENDS-GUIDE.md` to your friends, plus a Tailscale share invite for each of them ([how](docs/HOSTING.md#sharing-the-server-with-friends-tailscale)).
 
-### 3. Engine Setup
-```bash
-cd nexushost/engine
-npm install
-npm run dev
-```
-*Stats collection begins and streams to the Hub.*
+Run `setup-server.ps1` again any time to update Paper and the plugins. Run `build-installer.ps1 -Resolve` to pick up newer client mods.
 
-## 📡 Event Contract
+## What friends do
 
-| Event | Direction | Payload |
-|---|---|---|
-| `ENGINE_CONNECT` | Engine → Hub | - |
-| `DASHBOARD_CONNECT`| Dashboard → Hub | - |
-| `HEARTBEAT` | Engine → Hub → Dashboard | `{ cpuLoad, ramUsed, ramTotal, timestamp }` |
-| `TEST_START` | Dashboard → Hub → Engine | - |
-| `ENGINE_STATUS` | Hub → Dashboard | `{ online: boolean }` |
+1. Install Tailscale, sign in, accept your share invite.
+2. Close Minecraft and the launcher, double-click the installer.
+3. Pick the new profile in the Minecraft Launcher and press Play. The server is already in Multiplayer.
 
-## 🛠️ Tech Stack
+The installer is a plain-text `.bat` (a PowerShell script inside), so anyone can read it in Notepad before running it. It downloads only from `cdn.modrinth.com` and checks every file's SHA-512 hash. It runs in Windows PowerShell 5.1, so friends don't need PowerShell 7.
 
-- **Frontend**: React 19, Vite, Tailwind CSS, Lucide Icons, Socket.io-client
-- **Backend**: Node.js, Express.js, Socket.io
-- **Hardware Stats**: `systeminformation`
-- **Language**: TypeScript (Strict Mode)
+## Repo layout
 
----
-*Created by Antigravity for crimznexus.*
+| Path | What it is |
+|---|---|
+| `app/` | The NexusHost desktop app (Electron + React) |
+| `nexus.config.example.json` | All settings: names, Minecraft version, RAM, plugins, ports |
+| `setup-server.ps1` | Host setup and updates |
+| `build-installer.ps1` | Builds the friend installer and guide into `dist\` |
+| `mods/client-mods.txt` | The client mod list (edit this) |
+| `mods/client-mods.lock.json` | Exact versions and hashes the installer uses |
+| `scripts/` | Firewall, icon generator, mod resolver, dependency checker, offline-mode switch, headless test start |
+| `templates/` | `start.bat`, the installer and the friends' guide templates |
+| `docs/HOSTING.md` | Sharing, console commands, existing worlds, backups, troubleshooting |
+| `docs/MODS.md` | What each mod and plugin does, and what to avoid |
+
+`server\`, `dist\` and `nexus.config.json` are git-ignored: they hold your world, player list and Tailscale IP.
+
+## Security notes
+
+- The firewall rules accept connections only from Tailscale addresses (`100.64.0.0/10`), never from your local Wi-Fi or the internet.
+- The server runs in online mode with the whitelist enforced. With `allowCrackedLaunchers` it runs in offline mode instead; there is no password login, so only whitelist people you trust.
+- Tailscale node sharing gives friends access to the server PC only, not your other devices.
