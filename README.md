@@ -2,10 +2,46 @@
 
 Turn a Windows PC or laptop into a Minecraft Java server for you and your friends, even behind CGNAT, with no port forwarding and no tunnel service.
 
-- **Paper** server, set up and updated by one script
+- **NexusHost app** (Windows): a control panel for the whole server. Setup wizard, start/stop, live console, players, server options, Paper versions, a Modrinth plugin browser, worlds, backups, file editor, logs, and the friend installer. It runs from the system tray so the server keeps going when the window is closed.
+- **Paper** server, downloaded and updated for you
 - **Tailscale** for the connection: each friend joins your private network with their own free account, and you share only the server PC with them
 - A **one-click `.bat` installer** for friends that sets up Fabric, performance mods, a minimap, shaders and voice chat, and adds the server to their Multiplayer list
 - Server plugins: **BlueMap** (live 3D web map), **Simple Voice Chat**, **AxGraves**, **Chunky**
+- Optional **TLauncher / non-premium support**: one switch turns on offline mode, installs SkinsRestorer and moves existing players' saves ([details](docs/HOSTING.md#letting-tlauncher-non-premium-players-join))
+
+The PowerShell scripts below do the same jobs from the command line, for people who prefer that.
+
+## The app
+
+```bash
+cd app
+```
+
+```bash
+npm install
+```
+
+```bash
+npm run dev
+```
+
+`npm run dist` builds an installer and a portable `.exe` into `app/release/`. On first launch the setup wizard either creates a new server or adopts an existing server folder (worlds and settings are kept). App settings live in `%APPDATA%\NexusHost`.
+
+| Page | What it does |
+|---|---|
+| Dashboard | Status beacon, Tailscale address, players, TPS, CPU and memory, recent console |
+| Console | Live output, command box with history, quick commands |
+| Players | Online players (kick, op, ban), whitelist, operators, bans; works while stopped too |
+| Options | server.properties as a form, offline mode (TLauncher) switch, server icon, EULA |
+| Software | Paper version and build, updates, switching Minecraft versions (with a backup first) |
+| Plugins | Installed plugins with update checks, on/off, remove, and Modrinth search and install |
+| Worlds | World size, import from zip or folder, export, reset with a seed, datapacks |
+| Backups | Manual and daily backups (consistent while running), restore, retention |
+| Friends & access | Tailscale status, share steps, firewall setup, friend mod installer |
+| Files / Logs | Text editor for configs, log viewer with filter (including old `.log.gz` files) |
+| App settings | RAM, Java, start with Windows, auto-start, tray, crash restart, auto-stop when empty |
+
+The UI design rules are in [app/DESIGN.md](app/DESIGN.md).
 
 ```mermaid
 flowchart LR
@@ -71,12 +107,13 @@ The installer is a plain-text `.bat` (a PowerShell script inside), so anyone can
 
 | Path | What it is |
 |---|---|
+| `app/` | The NexusHost desktop app (Electron + React) |
 | `nexus.config.example.json` | All settings: names, Minecraft version, RAM, plugins, ports |
 | `setup-server.ps1` | Host setup and updates |
 | `build-installer.ps1` | Builds the friend installer and guide into `dist\` |
 | `mods/client-mods.txt` | The client mod list (edit this) |
 | `mods/client-mods.lock.json` | Exact versions and hashes the installer uses |
-| `scripts/` | Firewall, icon generator, mod resolver, dependency checker, headless test start |
+| `scripts/` | Firewall, icon generator, mod resolver, dependency checker, offline-mode switch, headless test start |
 | `templates/` | `start.bat`, the installer and the friends' guide templates |
 | `docs/HOSTING.md` | Sharing, console commands, existing worlds, backups, troubleshooting |
 | `docs/MODS.md` | What each mod and plugin does, and what to avoid |
@@ -86,5 +123,5 @@ The installer is a plain-text `.bat` (a PowerShell script inside), so anyone can
 ## Security notes
 
 - The firewall rules accept connections only from Tailscale addresses (`100.64.0.0/10`), never from your local Wi-Fi or the internet.
-- The server runs in online mode with the whitelist enforced.
+- The server runs in online mode with the whitelist enforced. With `allowCrackedLaunchers` it runs in offline mode instead; there is no password login, so only whitelist people you trust.
 - Tailscale node sharing gives friends access to the server PC only, not your other devices.

@@ -42,7 +42,11 @@ $trackFile = Join-Path $pluginsDir '.nexushost.json'
 $previous = @(); if (Test-Path -LiteralPath $trackFile) { $previous = @(Get-Content -LiteralPath $trackFile -Raw | ConvertFrom-Json) }
 $managed = [Collections.Generic.List[string]]::new()
 Write-Step '[3/5] Plugins'
-foreach ($slug in $cfg.plugins) {
+# allowCrackedLaunchers: offline mode; SkinsRestorer brings back skins, which offline mode loses
+$cracked = [bool]$cfg.allowCrackedLaunchers
+$pluginList = @($cfg.plugins)
+if ($cracked) { $pluginList += @('skinsrestorer') | Where-Object { $pluginList -notcontains $_ } }
+foreach ($slug in $pluginList) {
   $v = Get-ModrinthVersion $slug $cfg.mcVersion @('paper')
   if (-not $v) { $v = Get-ModrinthVersion $slug $cfg.mcVersion @('bukkit', 'spigot') }
   if (-not $v) { Write-Warning "      $slug has no version for Minecraft $($cfg.mcVersion) yet - skipped"; continue }
@@ -90,10 +94,17 @@ if (-not $eulaOk) {
 if (-not (Test-Path -LiteralPath $props)) {
   @(
     "motd=$($cfg.motd)", "max-players=$($cfg.maxPlayers)", "server-port=$($cfg.ports.minecraft)",
-    'online-mode=true', 'white-list=true', 'enforce-whitelist=true',
+    "online-mode=$(if ($cracked) { 'false' } else { 'true' })", "enforce-secure-profile=$(if ($cracked) { 'false' } else { 'true' })",
+    'white-list=true', 'enforce-whitelist=true',
     "view-distance=$($cfg.viewDistance)", "simulation-distance=$($cfg.simulationDistance)", "difficulty=$($cfg.difficulty)"
   ) | Set-Content -LiteralPath $props -Encoding utf8
   Write-Note '      server.properties created (whitelist on). Edit it freely; setup will not overwrite it.'
+}
+$isOnline = -not (Select-String -LiteralPath $props -Pattern '^online-mode=false' -Quiet)
+if ($cracked -and $isOnline) {
+  Write-Warning "allowCrackedLaunchers is on, but this server still runs in online mode. Stop the server, then run:`n  pwsh -File scripts\switch-to-offline.ps1`nIt switches modes and moves everyone's saves to their new player IDs."
+} elseif (-not $cracked -and -not $isOnline) {
+  Write-Warning 'This server runs in offline mode but allowCrackedLaunchers is off. The login plugins stay installed only if you list them in "plugins".'
 }
 $flags = (@($paper.version.java.flags.recommended) -join ' ')
 $bat = (Get-Content -LiteralPath (Join-Path $RepoRoot 'templates\start.bat') -Raw).

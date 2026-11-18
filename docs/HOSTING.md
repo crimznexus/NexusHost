@@ -34,6 +34,34 @@ Always stop with `stop`. Closing the window can lose world data.
 
 A singleplayer world was played in offline mode, so its player data is stored under offline UUIDs. On an online-mode server players start with fresh inventories unless you rename `playerdata\<offline-uuid>.dat` to their online UUID.
 
+## Letting TLauncher (non-premium) players join
+
+By default the server only accepts accounts Minecraft confirms as bought. To let players on TLauncher or other offline launchers join, the server must run in **offline mode**:
+
+- **SkinsRestorer** is installed so skins still show (offline mode loses them otherwise).
+- The whitelist and the Tailscale-only firewall stay on, so only your friends can reach the server.
+- There is no password login: a whitelisted friend could join using another whitelisted name (including yours, with op). Only whitelist people you trust.
+
+**In the NexusHost app:** Options → Offline mode → Turn on. It moves everyone's saves for you.
+
+**With the scripts, new server:** set `"allowCrackedLaunchers": true` in `nexus.config.json` before the first `setup-server.ps1` run.
+
+**With the scripts, existing server:** offline mode gives every player a new ID, so their saves have to move too.
+
+1. Set `"allowCrackedLaunchers": true` and run `pwsh -File setup-server.ps1` (installs SkinsRestorer).
+2. Stop the server, then run:
+   ```bash
+   pwsh -File scripts\switch-to-offline.ps1
+   ```
+   It backs up player data, whitelist, ops and `server.properties`, moves each player's inventory, position, advancements and stats to their new ID, and switches to offline mode. Add `-WhatIf` to preview.
+3. Start the server.
+
+**Names are case-sensitive in offline mode.** `Steve` and `steve` are different players with different saves. Add players with exactly the name they type in their launcher (`whitelist add steve`). If someone's whitelist entry has different capitals from what they'll type, pass `-Rename Steve=steve` to the switch script (comma-separate several).
+
+Voice chat logs a warning that its encryption is weaker in offline mode. The traffic still travels inside Tailscale's encrypted connection.
+
+The one-click mod installer sets up the official Minecraft Launcher only. TLauncher players can join without the mods.
+
 ## Pre-generating the map (less lag while exploring)
 
 When nobody is online, in the console:

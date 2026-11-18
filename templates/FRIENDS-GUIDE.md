@@ -34,6 +34,12 @@ Server address: **`{{SERVER_IP}}`** (default port, nothing else to type)
 
 Live web map: http://{{SERVER_IP}}:{{BLUEMAP_PORT}} (Tailscale must be on)
 
+<!--cracked-->
+## TLauncher players
+
+This server lets TLauncher players join. Pick version {{MC_VERSION}} and add the server address in Multiplayer. Always use the same name with the same capitals: `Steve` and `steve` count as different players. The mod installer above is for the official launcher only, but you can join without mods.
+<!--/cracked-->
+
 ## Can't connect?
 
 - Is Tailscale connected on your PC?

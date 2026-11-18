@@ -61,6 +61,7 @@ $guide = (Get-Content -LiteralPath (Join-Path $RepoRoot 'templates\FRIENDS-GUIDE
   Replace('{{SERVER_NAME}}', $name).Replace('{{SERVER_IP}}', $ip).Replace('{{MC_VERSION}}', $cfg.mcVersion).
   Replace('{{MOD_COUNT}}', "$($mods.Count)").Replace('{{INSTALLER}}', (Split-Path $out -Leaf)).
   Replace('{{BLUEMAP_PORT}}', "$($cfg.ports.bluemap)")
+if ($cfg.allowCrackedLaunchers) { $guide = $guide -replace '<!--/?cracked-->\r?\n', '' } else { $guide = $guide -replace '(?s)<!--cracked-->.*?<!--/cracked-->\r?\n\r?\n', '' }
 Set-Content -LiteralPath (Join-Path $dist 'FRIENDS-GUIDE.md') -Value $guide -Encoding utf8
 
 "Built $out  (Fabric loader $loader, $($mods.Count) files, server $ip)"

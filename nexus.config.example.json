@@ -11,6 +11,7 @@
   "difficulty": "easy",
   "iconText": "NEXUS",
   "serverDir": "server",
+  "allowCrackedLaunchers": false,
   "plugins": ["bluemap", "simple-voice-chat", "axgraves", "chunky"],
   "datapacks": ["dungeons-and-taverns"],
   "ports": { "minecraft": 25565, "bluemap": 8100, "voicechat": 24454 }
