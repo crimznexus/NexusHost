@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronsUpDown, Plus, Server } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useStore } from '@/lib/store'
+import { LOADER_LABEL } from '@/lib/loaders'
 
 /** Sidebar header: shows the active server and lets you switch to another one or add a new one. */
 export function ServerSwitcher({ onAdd }: { onAdd: () => void }) {
@@ -52,7 +53,7 @@ export function ServerSwitcher({ onAdd }: { onAdd: () => void }) {
                 <span className="switcher__icon switcher__icon--sm">{icon(s.id)}</span>
                 <span className="switcher__text">
                   <span className="row__title truncate">{s.name}</span>
-                  <span className="caption faint truncate">{s.mcVersion ? `Paper ${s.mcVersion} · ` : ''}{s.dir}</span>
+                  <span className="caption faint truncate">{s.mcVersion ? `${LOADER_LABEL[s.loader ?? 'paper']} ${s.mcVersion} · ` : ''}{s.dir}</span>
                 </span>
                 {isActive && <Check size={15} className="menu__check" aria-hidden />}
               </button>

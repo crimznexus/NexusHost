@@ -2,10 +2,10 @@
 
 Turn a Windows PC or laptop into a Minecraft Java server for you and your friends, even behind CGNAT, with no port forwarding and no tunnel service.
 
-- **NexusHost app** (Windows): a control panel for the whole server. Setup wizard, start/stop, live console, players, server options, Paper versions, a Modrinth plugin browser, worlds, backups, file editor, logs, and the friend installer. It runs from the system tray so the server keeps going when the window is closed.
-- **Paper** server, downloaded and updated for you
+- **NexusHost app** (Windows): a control panel for the whole server. Setup wizard, start/stop, live console, players, server options, server software versions, a Modrinth plugin and mod browser, worlds, backups, file editor, logs, and the friend installer. It runs from the system tray so the server keeps going when the window is closed.
+- **Paper**, **Fabric**, **NeoForge**, **Forge** or **Vanilla** server, downloaded and updated for you. Paper runs plugins; Fabric, NeoForge and Forge run mods
 - **Tailscale** for the connection: each friend joins your private network with their own free account, and you share only the server PC with them
-- A **one-click `.bat` installer** for friends that sets up Fabric, performance mods, a minimap, shaders and voice chat, and adds the server to their Multiplayer list
+- A **one-click `.bat` installer** for friends that sets up Fabric, performance mods, a minimap, shaders and voice chat, and adds the server to their Multiplayer list. Fabric servers add the server mods players need; Forge and NeoForge servers get a .mrpack modpack friends import into Prism Launcher, the Modrinth App or CurseForge
 - Server plugins: **BlueMap** (live 3D web map), **Simple Voice Chat**, **AxGraves**, **Chunky**
 - Optional **TLauncher / non-premium support**: one switch turns on offline mode, installs SkinsRestorer and moves existing players' saves ([details](docs/HOSTING.md#letting-tlauncher-non-premium-players-join))
 
@@ -40,11 +40,11 @@ npm run dev
 | Console | Live output, command box with history, quick commands |
 | Players | Online players (kick, op, ban), whitelist, operators, bans; works while stopped too |
 | Options | server.properties as a form, offline mode (TLauncher) switch, server icon, EULA |
-| Software | Paper version and build, updates, switching Minecraft versions (with a backup first) |
-| Plugins | Installed plugins with update checks, on/off, remove, and Modrinth search and install |
+| Software | Paper build or Fabric/NeoForge/Forge loader version, updates, switching Minecraft versions (with a backup first) |
+| Plugins / Mods | Installed plugins or mods with update checks, on/off, remove, and Modrinth search and install. Mods that players also need are marked, and required library mods install with them |
 | Worlds | World size, import from zip or folder, export, reset with a seed, datapacks |
 | Backups | Manual and daily backups (consistent while running), restore, retention |
-| Friends & access | Tailscale status, share steps, firewall setup, friend mod installer |
+| Friends & access | Tailscale status, share steps, firewall setup, friend mod installer or modpack |
 | Files / Logs | Text editor for configs, log viewer with filter (including old `.log.gz` files) |
 | App settings | RAM, Java, start with Windows, auto-start, tray, crash restart, auto-stop when empty |
 
@@ -131,5 +131,5 @@ The installer is a plain-text `.bat` (a PowerShell script inside), so anyone can
 ## Security notes
 
 - The firewall rules accept connections only from Tailscale addresses (`100.64.0.0/10`), never from your local Wi-Fi or the internet.
-- The server runs in online mode with the whitelist enforced. In offline mode (TLauncher support), the bundled **NexusGuard** plugin locks each name to its owner's Tailscale account, so nobody can join under someone else's name, and nobody needs a password.
+- The server runs in online mode with the whitelist enforced. In offline mode (TLauncher support), the bundled **NexusGuard** plugin (Paper servers only) locks each name to its owner's Tailscale account, so nobody can join under someone else's name, and nobody needs a password.
 - Tailscale node sharing gives friends access to the server PC only, not your other devices.

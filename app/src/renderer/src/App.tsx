@@ -20,6 +20,7 @@ import { SettingsPage } from './pages/Settings'
 import { SetupWizard } from './pages/Setup'
 import { Showcase } from './pages/Showcase'
 import { ServerSwitcher } from './components/ServerSwitcher'
+import { addonWord } from './lib/loaders'
 
 export type PageId = 'dashboard' | 'console' | 'players' | 'options' | 'software' | 'plugins' | 'worlds' | 'backups' | 'friends' | 'files' | 'logs' | 'settings'
 export interface PageProps { go: (p: PageId) => void; addServer: () => void }
@@ -52,7 +53,10 @@ export function App() {
   if (!settings.serverDir) return <><SetupWizard onDone={onSetupDone} /><DialogHost /><Toasts /></>
   if (adding) return <><SetupWizard onDone={onSetupDone} onCancel={() => setAdding(false)} /><DialogHost /><Toasts /></>
 
-  const current = NAV.find((n) => n.id === page) ?? NAV[0]
+  // the add-ons page is called Plugins on Paper and Mods on Fabric/NeoForge/Forge; Vanilla has none
+  const word = addonWord(settings.loader)
+  const nav = NAV.filter((n) => n.id !== 'plugins' || word).map((n) => (n.id === 'plugins' && word === 'mod' ? { ...n, label: 'Mods' } : n))
+  const current = nav.find((n) => n.id === page) ?? nav[0]
   const Page = current.page
   const running = stats.state === 'online' || stats.state === 'starting'
   const busy = stats.state === 'starting' || stats.state === 'stopping'
@@ -62,7 +66,7 @@ export function App() {
       <aside className="sidebar">
         <ServerSwitcher onAdd={() => setAdding(true)} />
         <nav className="nav" aria-label="Sections">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <div key={n.id} style={{ display: 'contents' }}>
               {n.group && <div className="nav__group overline">{n.group}</div>}
               <button className="nav__item" aria-current={page === n.id ? 'page' : undefined} onClick={() => setPage(n.id)}>

@@ -9,6 +9,7 @@ const DEFAULTS: AppSettings = {
   activeServerId: null,
   serverDir: null,
   serverName: 'Friends Server',
+  loader: 'paper',
   mcVersion: '',
   memoryGB: 4,
   javaPath: null,
@@ -37,7 +38,7 @@ function syncActive(s: AppSettings): AppSettings {
   if (i < 0) i = servers.findIndex((x) => sameDir(x.dir, s.serverDir!))
   const profile: SavedServer = {
     id: i >= 0 ? servers[i].id : randomUUID(),
-    name: s.serverName, dir: s.serverDir, mcVersion: s.mcVersion, memoryGB: s.memoryGB,
+    name: s.serverName, dir: s.serverDir, loader: s.loader, mcVersion: s.mcVersion, memoryGB: s.memoryGB,
     javaPath: s.javaPath, javaFlags: s.javaFlags, iconText: s.iconText, backups: s.backups
   }
   if (i >= 0) servers[i] = profile; else servers.push(profile)
@@ -54,7 +55,7 @@ export function getSettings(): AppSettings {
   if (cache) return cache
   let loaded: Partial<AppSettings> = {}
   try { if (existsSync(file())) loaded = JSON.parse(readFileSync(file(), 'utf8')) } catch { /* corrupt: use defaults */ }
-  const merged = { ...DEFAULTS, ...loaded, backups: { ...DEFAULTS.backups, ...(loaded.backups ?? {}) }, servers: loaded.servers ?? [] }
+  const merged = { ...DEFAULTS, ...loaded, backups: { ...DEFAULTS.backups, ...(loaded.backups ?? {}) }, servers: (loaded.servers ?? []).map((x) => ({ ...x, loader: x.loader ?? 'paper' })) }
   // settings from 2.0 had a single server and no list: move it into the list
   const synced = syncActive(merged)
   if (synced !== merged && !loaded.servers?.length) write(synced)
@@ -82,7 +83,7 @@ export function activateServer(id: string): AppSettings {
   const p = s.servers.find((x) => x.id === id)
   if (!p) throw new Error('That server is not in the list any more.')
   return saveSettings({
-    activeServerId: p.id, serverDir: p.dir, serverName: p.name, mcVersion: p.mcVersion, memoryGB: p.memoryGB,
+    activeServerId: p.id, serverDir: p.dir, serverName: p.name, loader: p.loader, mcVersion: p.mcVersion, memoryGB: p.memoryGB,
     javaPath: p.javaPath, javaFlags: p.javaFlags, iconText: p.iconText, backups: p.backups
   })
 }

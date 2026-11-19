@@ -27,15 +27,15 @@ const logs: LogLine[] = [
 ]
 const setup = new URLSearchParams(location.search).has('setup')
 const demoServers: SavedServer[] = [
-  { id: 'friends', name: 'Friends Server', dir: 'C:\\Servers\\friends', mcVersion: '26.3', memoryGB: 8, javaPath: 'C:\\Program Files\\Eclipse Adoptium\\jdk-25\\bin\\java.exe', javaFlags: [], iconText: 'NEXUS', backups: { daily: true, keep: 7, lastRun: new Date().toISOString() } },
-  { id: 'creative', name: 'Creative Builds', dir: 'C:\\Servers\\creative', mcVersion: '26.3', memoryGB: 4, javaPath: null, javaFlags: [], iconText: 'BUILD', backups: { daily: false, keep: 7, lastRun: null } },
-  { id: 'hardcore', name: 'Hardcore Weekend', dir: 'D:\\Minecraft\\hardcore', mcVersion: '26.2', memoryGB: 6, javaPath: null, javaFlags: [], iconText: 'HC', backups: { daily: true, keep: 3, lastRun: null } }
+  { id: 'friends', name: 'Friends Server', dir: 'C:\\Servers\\friends', loader: 'paper', mcVersion: '26.3', memoryGB: 8, javaPath: 'C:\\Program Files\\Eclipse Adoptium\\jdk-25\\bin\\java.exe', javaFlags: [], iconText: 'NEXUS', backups: { daily: true, keep: 7, lastRun: new Date().toISOString() } },
+  { id: 'creative', name: 'Create Modpack', dir: 'C:\\Servers\\create', loader: 'neoforge', mcVersion: '26.3', memoryGB: 4, javaPath: null, javaFlags: [], iconText: 'BUILD', backups: { daily: false, keep: 7, lastRun: null } },
+  { id: 'hardcore', name: 'Hardcore Weekend', dir: 'D:\\Minecraft\\hardcore', loader: 'fabric', mcVersion: '26.2', memoryGB: 6, javaPath: null, javaFlags: [], iconText: 'HC', backups: { daily: true, keep: 3, lastRun: null } }
 ]
 const activeId = (() => { try { return sessionStorage.getItem('mock-active') || 'friends' } catch { return 'friends' } })()
 const act = demoServers.find((s) => s.id === activeId) ?? demoServers[0]
 let settings: AppSettings = {
   servers: demoServers, activeServerId: setup ? null : act.id,
-  serverDir: setup ? null : act.dir, serverName: act.name, mcVersion: act.mcVersion, memoryGB: act.memoryGB, javaPath: act.javaPath, javaFlags: [],
+  serverDir: setup ? null : act.dir, serverName: act.name, loader: act.loader, mcVersion: act.mcVersion, memoryGB: act.memoryGB, javaPath: act.javaPath, javaFlags: [],
   iconText: act.iconText, autoStartServer: false, startWithWindows: false, closeToTray: true, autoRestart: true, autoStopMinutes: 0, backups: act.backups
 }
 let stats: ServerStats = { state: 'online', pid: 1234, startedAt: Date.now() - 3600_000 * 2.3, cpu: 14, memoryMB: 8550, heapUsedMB: 3180, heapMaxMB: 8192, tps: 20.0, players: ['steve', 'alex', 'maya'], maxPlayers: 12, lastExitCode: null, emptySince: null }
@@ -46,17 +46,17 @@ const impl: Record<string, (...a: any[]) => any> = {
   saveSettings: (p: Partial<AppSettings>) => (settings = { ...settings, ...p }),
   systemInfo: () => ({ totalMemGB: 16, platform: 'win32', appVersion: '2.0.0', userData: 'C:\\Users\\you\\AppData\\Roaming\\NexusHost' }),
   pickFolder: () => 'C:\\Servers\\new', pickFile: () => 'C:\\Users\\you\\Downloads\\My Survival World.zip', openPath: () => {}, openExternal: () => {}, copyText: (t: string) => navigator.clipboard?.writeText(t),
-  paperVersions: () => ({ versions: ['26.3', '26.2', '26.1.2', '1.21.11', '1.21.10'], latest: '26.3' }),
+  mcVersions: (l: string) => ({ versions: l === 'forge' ? ['26.3', '26.2', '26.1.2', '1.21.11', '1.20.1'] : ['26.3', '26.2', '26.1.2', '1.21.11', '1.21.10'], latest: '26.3' }),
   findJava: () => ({ path: 'C:\\Program Files\\Eclipse Adoptium\\jdk-25\\bin\\java.exe', major: 25 }),
   javaMinimum: () => 25, installJava: () => {},
   checkWorld: () => ({ ok: true, name: 'My World', size: 120_000_000, message: 'World "My World" found' }),
-  inspectFolder: (dir: string) => ({ dir, exists: true, jar: null, paperBuild: null, mcVersion: null, eulaAccepted: false, onlineMode: true, levelName: 'world', port: 25565, hasWorld: false }),
+  inspectFolder: (dir: string) => ({ dir, exists: true, jar: null, loader: null, loaderVersion: null, paperBuild: null, mcVersion: null, eulaAccepted: false, onlineMode: true, levelName: 'world', port: 25565, hasWorld: false }),
   runSetup: async () => {
     for (let i = 0; i <= 5; i++) { emit({ type: 'progress', progress: { task: 'setup', label: ['Checking Java', 'Downloading Paper 26.3', 'Installing plugins', 'Writing server settings', 'Accepting the EULA', 'Saving'][i] ?? 'Done', done: i, total: 6 } }); await new Promise((r) => setTimeout(r, 400)) }
     settings = { ...settings, serverDir: 'C:\\Servers\\new' }
     emit({ type: 'progress', progress: { task: 'setup', label: 'Done', done: 6, total: 6, finished: true } })
   },
-  serverInfo: () => ({ dir: settings.serverDir, exists: true, jar: 'paper-26.3-253.jar', paperBuild: 253, mcVersion: '26.3', eulaAccepted: true, onlineMode: false, levelName: 'world', port: 25565, hasWorld: true }),
+  serverInfo: () => ({ dir: settings.serverDir, exists: true, jar: 'paper-26.3-253.jar', loader: settings.loader, loaderVersion: ({ paper: '253', neoforge: '26.3.0.113', fabric: '0.20.1', forge: '66.1.9', vanilla: '26.3' } as Record<string, string>)[settings.loader], paperBuild: 253, mcVersion: '26.3', eulaAccepted: true, onlineMode: false, levelName: 'world', port: 25565, hasWorld: true }),
   start: async () => { stats = { ...stats, state: 'starting' }; emit({ type: 'stats', stats }); await new Promise((r) => setTimeout(r, 1500)); stats = { ...stats, state: 'online', startedAt: Date.now() }; emit({ type: 'stats', stats }) },
   stop: async () => { stats = { ...stats, state: 'stopping' }; emit({ type: 'stats', stats }); await new Promise((r) => setTimeout(r, 1200)); stats = { ...stats, state: 'stopped', players: [], cpu: null, memoryMB: null, tps: null }; emit({ type: 'stats', stats }) },
   restart: () => {}, kill: () => {},
@@ -69,11 +69,18 @@ const impl: Record<string, (...a: any[]) => any> = {
   switchServer: (id: string) => { try { sessionStorage.setItem('mock-active', id) } catch { /* */ } return settings },
   removeServer: (id: string) => (settings = { ...settings, servers: settings.servers.filter((s) => s.id !== id) }),
   renameServer: (id: string, name: string) => (settings = { ...settings, servers: settings.servers.map((s) => (s.id === id ? { ...s, name } : s)) }),
-  guard: () => ({ installed: true, locks: [['steve', 'Steve R.', 'steve-pc'], ['alex', 'Alex K.', 'alex-laptop'], ['maya', 'Maya P.', 'maya-desktop']].map(([name, tailscaleName, device]) => ({ name, tailscaleName, device, tailscaleLogin: '', userId: '1', lockedAt: '' })) }),
+  guard: () => settings.loader !== 'paper' ? { supported: false, installed: false, locks: [] } : ({ supported: true, installed: true, locks: [['steve', 'Steve R.', 'steve-pc'], ['alex', 'Alex K.', 'alex-laptop'], ['maya', 'Maya P.', 'maya-desktop']].map(([name, tailscaleName, device]) => ({ name, tailscaleName, device, tailscaleLogin: '', userId: '1', lockedAt: '' })) }),
   installGuard: () => ['NexusGuard installed.'], unlockName: () => {},
-  paperBuilds: () => [{ id: 253, channel: 'STABLE', time: '2026-11-15T17:14:05Z' }, { id: 252, channel: 'STABLE', time: '2026-11-14T10:00:00Z' }],
-  updatePaper: () => ({ build: 253, jar: 'paper-26.3-253.jar' }),
-  plugins: () => [
+  software: (mc: string) => settings.loader === 'paper'
+    ? { loader: 'paper', mcVersion: mc, latest: '253', builds: [{ id: '253', channel: 'STABLE', time: '2026-11-15T17:14:05Z' }, { id: '252', channel: 'STABLE', time: '2026-11-14T10:00:00Z' }] }
+    : { loader: settings.loader, mcVersion: mc, latest: '26.3.0.113', builds: ['26.3.0.113', '26.3.0.112', '26.3.0.111', '26.3.0.110'].map((id) => ({ id, channel: 'STABLE', time: null })) },
+  installSoftware: () => 'NeoForge 26.3.0.113',
+  plugins: () => settings.loader !== 'paper' ? [
+    { file: 'create-26.3-6.1.0.jar', enabled: true, name: 'Create', version: '6.1.0', description: 'Building tools and aesthetic technology', authors: ['simibubi'], slug: 'create', latestVersion: null, updateFile: null, clientNeeded: true },
+    { file: 'farmersdelight-26.3-2.4.jar', enabled: true, name: "Farmer's Delight", version: '2.4', description: 'Farming and cooking expansion', authors: [], slug: 'farmers-delight', latestVersion: null, updateFile: null, clientNeeded: true },
+    { file: 'ferritecore-8.0.jar', enabled: true, name: 'FerriteCore', version: '8.0', description: 'Memory usage optimizations', authors: [], slug: 'ferrite-core', latestVersion: '8.1', updateFile: 'ferritecore-8.1.jar', clientNeeded: false },
+    { file: 'chunky-neoforge-1.5.66.jar', enabled: true, name: 'Chunky', version: '1.5.66', description: 'Pre-generates chunks', authors: [], slug: 'chunky', latestVersion: null, updateFile: null, clientNeeded: false }
+  ] : [
     { file: 'bluemap-5.29-paper.jar', enabled: true, name: 'BlueMap', version: '5.29', description: 'A 3D map of your world in the browser', authors: ['Blue'], slug: 'bluemap', latestVersion: null, updateFile: null },
     { file: 'Chunky-Paper-1.5.66.jar', enabled: true, name: 'Chunky', version: '1.5.66', description: 'Pre-generates chunks', authors: ['pop4959'], slug: 'chunky', latestVersion: '1.5.70', updateFile: 'Chunky-Paper-1.5.70.jar' },
     { file: 'AxGraves-1.32.2.jar', enabled: true, name: 'AxGraves', version: '1.32.2', description: 'Items go into a grave when you die', authors: [], slug: 'axgraves', latestVersion: null, updateFile: null },
@@ -94,8 +101,8 @@ const impl: Record<string, (...a: any[]) => any> = {
   logFiles: () => [{ name: 'latest.log', rel: 'logs/latest.log', dir: false, size: 20000, modified: Date.now() }], readLog: () => logs.map((l) => l.text).join('\n'),
   tailscale: () => ({ installed: true, running: true, loggedIn: true, ip: '100.101.102.103', dnsName: 'host-pc.tail1234.ts.net', hostName: 'host-pc', firewallReady: true }),
   setupFirewall: () => true,
-  friendKit: () => ({ dir: 'C:\\Users\\you\\AppData\\Roaming\\NexusHost\\friend-kit', installer: 'C:\\kit\\Install-FriendsServer-Mods.bat', guide: null, builtAt: Date.now() - 3600_000, modCount: 42, mods: [{ slug: 'sodium', title: 'Sodium', kind: 'mod', version: '0.7' }, { slug: 'xaeros-minimap', title: "Xaero's Minimap", kind: 'mod', version: '25.2' }] }),
-  buildFriendKit: () => ({ dir: 'C:\\kit', installer: 'C:\\kit\\Install-FriendsServer-Mods.bat', guide: 'C:\\kit\\FRIENDS-GUIDE.md', builtAt: Date.now(), modCount: 42, mods: [] })
+  friendKit: () => ({ dir: 'C:\\Users\\you\\AppData\\Roaming\\NexusHost\\friend-kit', installer: 'C:\\kit\\Install-FriendsServer-Mods.bat', guide: null, builtAt: Date.now() - 3600_000, kind: settings.loader === 'neoforge' || settings.loader === 'forge' ? 'mrpack' : 'bat', serverMods: settings.loader === 'paper' ? 0 : 2, modCount: 42, mods: [{ slug: 'sodium', title: 'Sodium', kind: 'mod', version: '0.7' }, { slug: 'xaeros-minimap', title: "Xaero's Minimap", kind: 'mod', version: '25.2' }] }),
+  buildFriendKit: () => ({ dir: 'C:\\kit', installer: 'C:\\kit\\Install-FriendsServer-Mods.bat', guide: 'C:\\kit\\FRIENDS-GUIDE.md', builtAt: Date.now(), kind: 'bat', serverMods: 0, modCount: 42, mods: [] })
 }
 
 export const mockBridge = {

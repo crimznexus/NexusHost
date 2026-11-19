@@ -40,13 +40,17 @@ export async function hashFile(file: string, algo: 'sha256' | 'sha512' | 'sha1')
   return h.digest('hex')
 }
 
-/** Downloads url to dest unless dest already has the expected hash. Returns true if it downloaded. */
-export async function downloadVerified(url: string, dest: string, hash: string, algo: 'sha256' | 'sha512',
+const DOWNLOAD_HOSTS = ['fill-data.papermc.io', 'cdn.modrinth.com', 'meta.fabricmc.net', 'api.papermc.io', 'fill.papermc.io',
+  'piston-data.mojang.com', 'piston-meta.mojang.com', 'maven.neoforged.net', 'maven.minecraftforge.net']
+
+/** Downloads url to dest unless dest already has the expected hash (or, with hash null, unless dest exists). Returns true if it downloaded. */
+export async function downloadVerified(url: string, dest: string, hash: string | null, algo: 'sha1' | 'sha256' | 'sha512',
   onProgress?: (done: number, total: number) => void): Promise<boolean> {
-  if (existsSync(dest) && (await hashFile(dest, algo)) === hash.toLowerCase()) return false
-  const allowed = ['fill-data.papermc.io', 'cdn.modrinth.com', 'meta.fabricmc.net', 'api.papermc.io', 'fill.papermc.io']
+  if (existsSync(dest) && (hash === null || (await hashFile(dest, algo)) === hash.toLowerCase())) return false
   const host = new URL(url).hostname
-  if (!allowed.includes(host)) throw new Error(`Refusing to download from ${host}`)
+  if (!DOWNLOAD_HOSTS.includes(host)) throw new Error(`Refusing to download from ${host}`)
+  // Only Fabric's generated launcher jar comes without a published hash; it is served over HTTPS from Fabric's own API.
+  if (hash === null && host !== 'meta.fabricmc.net') throw new Error(`No checksum for ${url}`)
   const r = await fetch(url, { headers: { 'User-Agent': UA } })
   if (!r.ok || !r.body) throw new Error(`Download failed (${r.status}): ${url}`)
   const total = Number(r.headers.get('content-length') ?? 0)
@@ -56,7 +60,7 @@ export async function downloadVerified(url: string, dest: string, hash: string, 
   const body = Readable.fromWeb(r.body as any)
   body.on('data', (c: Buffer) => { done += c.length; onProgress?.(done, total) })
   await pipeline(body, createWriteStream(tmp))
-  if ((await hashFile(tmp, algo)) !== hash.toLowerCase()) {
+  if (hash !== null && (await hashFile(tmp, algo)) !== hash.toLowerCase()) {
     await fsp.rm(tmp, { force: true })
     throw new Error(`Checksum mismatch for ${path.basename(dest)}`)
   }

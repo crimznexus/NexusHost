@@ -4,6 +4,7 @@ import type { AppSettings } from '@shared/types'
 import type { PageProps } from '@/App'
 import { api } from '@/lib/api'
 import { useLoad, useStore } from '@/lib/store'
+import { LOADER_LABEL } from '@/lib/loaders'
 import { ActionButton, Button, Field, Panel, ToggleRow, confirmDialog, promptDialog } from '@/components/ui'
 
 export function SettingsPage({ addServer }: PageProps) {
@@ -36,10 +37,10 @@ export function SettingsPage({ addServer }: PageProps) {
             <Field label="Java used to run the server"><input className="input mono" readOnly value={settings.javaPath ?? 'Not found'} /></Field>
             <div className="cluster">
               <ActionButton icon={FolderSearch} onAction={async () => {
-                const min = await api.javaMinimum(settings.mcVersion); const j = await api.findJava(min)
+                const min = await api.javaMinimum(settings.mcVersion, settings.loader); const j = await api.findJava(min)
                 if (j) { await save({ javaPath: j.path }); toast('success', `Using Java ${j.major}`) } else toast('error', `Java ${min} or newer was not found.`)
               }}>Find Java</ActionButton>
-              <ActionButton icon={Coffee} onAction={async () => { const min = await api.javaMinimum(settings.mcVersion); await api.installJava(min) }}>Install Java</ActionButton>
+              <ActionButton icon={Coffee} onAction={async () => { const min = await api.javaMinimum(settings.mcVersion, settings.loader); await api.installJava(min) }}>Install Java</ActionButton>
             </div>
           </div>
         </Panel>
@@ -70,7 +71,7 @@ export function SettingsPage({ addServer }: PageProps) {
                 <span className="avatar"><Server size={16} /></span>
                 <div style={{ minWidth: 0 }}>
                   <div className="cluster" style={{ flexWrap: 'nowrap' }}><span className="row__title truncate">{s.name}</span>{isActive && <span className="tag tag--accent">active</span>}</div>
-                  <div className="row__meta mono truncate">{s.mcVersion ? `Paper ${s.mcVersion} · ` : ''}{s.memoryGB} GB · {s.dir}</div>
+                  <div className="row__meta mono truncate">{s.mcVersion ? `${LOADER_LABEL[s.loader ?? 'paper']} ${s.mcVersion} · ` : ''}{s.memoryGB} GB · {s.dir}</div>
                 </div>
                 <div className="row__actions">
                   {!isActive && <ActionButton size="sm" disabled={running} onAction={async () => { const r = await act(() => api.switchServer(s.id)); if (r) location.reload() }}>Switch</ActionButton>}
