@@ -16,7 +16,7 @@ app.whenReady().then(async () => {
     await step('check good zip', async () => { const c = await api.checkWorld(process.env.NEXUS_WORLD_ZIP!); if (!c.ok) throw new Error(c.message); return `${c.message}, ${Math.round(c.size / 1e6)} MB` })
     await step('check zip without a world', async () => { const c = await api.checkWorld(process.env.NEXUS_BAD_ZIP!); if (c.ok) throw new Error('accepted a non-world zip'); return c.message })
     await step('new server from zip', async () => {
-      await api.runSetup({ mode: 'new', dir, serverName: 'Zip World', mcVersion: '26.3', memoryGB: 2, offlineMode: true, plugins: [], acceptEula: true, motd: '', maxPlayers: 8, worldSource: process.env.NEXUS_WORLD_ZIP! })
+      await api.runSetup({ mode: 'new', loader: 'paper', dir, serverName: 'Zip World', mcVersion: '26.3', memoryGB: 2, offlineMode: true, plugins: [], acceptEula: true, motd: '', maxPlayers: 8, worldSource: process.env.NEXUS_WORLD_ZIP! })
       const lvl = path.join(dir, 'world', 'level.dat')
       if (!existsSync(lvl)) throw new Error('world/level.dat missing after setup')
       const s = await api.getSettings()

@@ -54,7 +54,7 @@ export function PlayersPage() {
       <Panel title="Access" sub={running ? 'Changes apply right away.' : 'The server is stopped; changes are saved to the files and apply on next start.'}
         actions={<><Seg value={tab} onChange={setTab} options={[{ value: 'whitelist', label: `Whitelist${d ? ` (${d.whitelist.length})` : ''}` }, { value: 'ops', label: `Operators${d ? ` (${d.ops.length})` : ''}` }, { value: 'banned', label: `Banned${d ? ` (${d.banned.length})` : ''}` }]} />
           <Button variant="primary" icon={tab === 'banned' ? Ban : UserPlus} onClick={add}>{tab === 'whitelist' ? 'Add' : tab === 'ops' ? 'Add operator' : 'Ban'}</Button></>}>
-        {tab === 'whitelist' && d && !d.onlineMode && guard.data && !guard.data.installed && (
+        {tab === 'whitelist' && d && !d.onlineMode && guard.data?.supported && !guard.data.installed && (
           <div style={{ marginBottom: 12 }}>
             <Banner tone="warn" action={<ActionButton size="sm" variant="primary" icon={Lock} onAction={async () => { const r = await act(() => api.installGuard()); if (r) { toast('success', r.join(' · ')); guard.reload() } }}>Protect names</ActionButton>}>
               Offline mode is on, so anyone on your whitelist can join using another player's name, including yours. NexusGuard locks each name to its owner's Tailscale account.

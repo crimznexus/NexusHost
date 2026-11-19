@@ -41,7 +41,7 @@ async function writeLocks(dir: string, locks: GuardLock[]) {
 
 export async function guardInfo(dir: string): Promise<GuardInfo> {
   const enabledJar = existsSync(path.join(dir, 'plugins', 'NexusGuard.jar'))
-  return { installed: enabledJar, locks: await readLocks(dir) }
+  return { supported: true, installed: enabledJar, locks: await readLocks(dir) }
 }
 
 export async function unlock(dir: string, name: string) {

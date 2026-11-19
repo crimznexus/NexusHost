@@ -6,14 +6,14 @@ import pidusage from 'pidusage'
 import type { LogLine, ServerStats } from '@shared/types'
 import { getSettings } from './settings'
 import { readProperties } from './properties'
-import { findPaperJar } from './paper'
+import { LOADER_LABEL, launchArgs } from './loaders'
 import { portInUse, run, sleep } from './util'
 
 const ANSI = /\x1b\[[0-9;?]*[A-Za-z]|§[0-9a-fk-or]/gi
 const MAX_LINES = 3000
 
 /**
- * Runs the Paper server as a child process. Emits:
+ * Runs the server (Paper, Fabric, NeoForge, Forge or Vanilla) as a child process. Emits:
  *   'log'   (LogLine[])   new console lines
  *   'stats' (ServerStats) whenever state, players or resource use change
  */
@@ -75,15 +75,15 @@ export class ServerManager extends EventEmitter {
     if (await this.detectExternal()) throw new Error('A server is already running on this port outside NexusHost. Stop it there first (type "stop" in its window).')
     const eula = path.join(dir, 'eula.txt')
     if (!existsSync(eula) || !/^\s*eula\s*=\s*true/im.test(readFileSync(eula, 'utf8'))) throw new Error('The Minecraft EULA has not been accepted. Accept it in Options first.')
-    const jar = findPaperJar(dir)
-    if (!jar) throw new Error('No Paper jar found in the server folder. Install one from the Software page.')
+    const launch = launchArgs(dir, s.loader)
+    if (!launch) throw new Error(`No ${LOADER_LABEL[s.loader]} server found in the server folder. Install it from the Software page.`)
     if (!s.javaPath || !existsSync(s.javaPath)) throw new Error('Java was not found. Pick it again in Settings.')
     const props = await readProperties(dir)
 
     const mem = `${s.memoryGB}G`
-    const args = [`-Xms${mem}`, `-Xmx${mem}`, ...s.javaFlags, '-Dstdout.encoding=UTF-8', '-Dstderr.encoding=UTF-8', '-Dterminal.jline=false', '-Dterminal.ansi=false', '-jar', jar.jar, '--nogui']
+    const args = [`-Xms${mem}`, `-Xmx${mem}`, ...s.javaFlags, '-Dstdout.encoding=UTF-8', '-Dstderr.encoding=UTF-8', '-Dterminal.jline=false', '-Dterminal.ansi=false', ...launch.args]
     this.userStopped = false
-    this.system(`Starting ${jar.jar} with ${mem} RAM`)
+    this.system(`Starting ${launch.label} with ${mem} RAM`)
     const p = spawn(s.javaPath, args, { cwd: dir, windowsHide: true })
     this.proc = p
     this.setStats({ state: 'starting', pid: p.pid ?? null, startedAt: Date.now(), players: [], tps: null, cpu: null, memoryMB: null, heapUsedMB: null, heapMaxMB: null, lastExitCode: null, maxPlayers: Number(props['max-players'] || 20), emptySince: null })
@@ -101,24 +101,23 @@ export class ServerManager extends EventEmitter {
     p.on('close', (code) => this.onExit(code))
 
     this.statsTimer = setInterval(() => this.sample(), 2000)
-    this.tpsTimer = setInterval(() => { if (this.stats.state === 'online') { this.hideTpsUntil = Date.now() + 3000; this.write('tps') } }, 15000)
+    this.tpsTimer = setInterval(() => { if (this.stats.state === 'online') this.pollTps() }, 15000)
   }
 
   private onLine(text: string, isErr: boolean) {
     if (!text.trim()) return
-    // TPS polling output is hidden from the console
+    // TPS polling output is hidden from the console. Paper answers `tps`; other servers answer the vanilla `tick query`.
     const tps = /TPS from last 1m, 5m, 15m:\s*\*?([\d.]+)/.exec(text)
-    if (tps) {
-      this.setStats({ tps: Number(tps[1]) })
-      if (Date.now() < this.hideTpsUntil) return
-    }
+    const mspt = /Average time per tick:\s*([\d.]+)\s*ms/i.exec(text)
+    if (tps || mspt) this.setStats({ tps: tps ? Number(tps[1]) : Math.min(20, Math.round((1000 / Math.max(50, Number(mspt![1]))) * 10) / 10) })
+    if (Date.now() < this.hideTpsUntil && (tps || /\]: (The game is running|Target tick rate|Average time per tick|Percentiles|P\d+:|The game is (frozen|sprinting))/i.test(text))) return
     const level: LogLine['level'] = /\bERROR\]|\bSEVERE\b|Exception|^\s+at /.test(text) || isErr ? 'error' : /\bWARN\]/.test(text) ? 'warn' : 'info'
     this.push(text, level)
     for (const w of [...this.waiters]) if (w.re.test(text)) { this.waiters.splice(this.waiters.indexOf(w), 1); w.resolve(text) }
 
     if (/Done \([\d.,]+s\)!/.test(text)) {
       this.setStats({ state: 'online', emptySince: Date.now() })
-      this.hideTpsUntil = Date.now() + 3000; this.write('tps')
+      this.pollTps()
     }
     const join = /\]: (?:System chat: )?([A-Za-z0-9_]{1,16}) joined the game/.exec(text)
     if (join && !this.stats.players.includes(join[1])) this.setStats({ players: [...this.stats.players, join[1]], emptySince: null })
@@ -177,11 +176,16 @@ export class ServerManager extends EventEmitter {
 
   write(cmd: string) { if (this.proc) this.proc.stdin.write(cmd + '\n') }
 
+  private pollTps() {
+    this.hideTpsUntil = Date.now() + 3000
+    this.write(getSettings().loader === 'paper' ? 'tps' : 'tick query')
+  }
+
   sendCommand(cmd: string) {
     const c = cmd.trim().replace(/^\//, '')
     if (!c) return
     if (!this.proc) throw new Error('The server is not running.')
-    if (/^tps\b/i.test(c)) this.hideTpsUntil = 0
+    if (/^(tps|tick query)\b/i.test(c)) this.hideTpsUntil = 0
     this.push('> ' + c, 'command')
     if (/^(stop|end)\b/i.test(c)) { this.stop().catch(() => {}); return }
     this.write(c)

@@ -1,5 +1,8 @@
 // Types shared by the main process, preload and renderer.
 
+/** Server software. Paper runs plugins; Fabric, NeoForge and Forge run mods; Vanilla runs neither. */
+export type Loader = 'paper' | 'fabric' | 'neoforge' | 'forge' | 'vanilla'
+
 export type ServerState = 'stopped' | 'starting' | 'online' | 'stopping' | 'crashed' | 'external'
 
 /** One server NexusHost knows about. The active one is mirrored into the top-level AppSettings fields. */
@@ -7,6 +10,7 @@ export interface SavedServer {
   id: string
   name: string
   dir: string
+  loader: Loader
   mcVersion: string
   memoryGB: number
   javaPath: string | null
@@ -20,6 +24,7 @@ export interface AppSettings {
   activeServerId: string | null
   serverDir: string | null
   serverName: string
+  loader: Loader
   mcVersion: string
   memoryGB: number
   javaPath: string | null
@@ -61,7 +66,11 @@ export interface JavaInfo { path: string; major: number }
 export interface ServerInfo {
   dir: string
   exists: boolean
+  /** What starts the server (a jar name, or the loader's argument file), null if no server software is installed. */
   jar: string | null
+  loader: Loader | null
+  /** Paper build number, or the Fabric/NeoForge/Forge loader version. */
+  loaderVersion: string | null
   paperBuild: number | null
   mcVersion: string | null
   eulaAccepted: boolean
@@ -84,7 +93,7 @@ export interface PlayerLists {
 }
 
 export interface GuardLock { name: string; userId: string; tailscaleLogin: string; tailscaleName: string; device: string; lockedAt: string }
-export interface GuardInfo { installed: boolean; locks: GuardLock[] }
+export interface GuardInfo { supported: boolean; installed: boolean; locks: GuardLock[] }
 
 export interface PluginInfo {
   file: string
@@ -96,6 +105,8 @@ export interface PluginInfo {
   slug: string | null
   latestVersion: string | null
   updateFile: string | null
+  /** Mods only: players need it installed too (from Modrinth's client_side). */
+  clientNeeded?: boolean
 }
 
 export interface ModrinthHit {
@@ -106,6 +117,8 @@ export interface ModrinthHit {
   downloads: number
   icon_url: string | null
   categories: string[]
+  client_side?: string
+  server_side?: string
 }
 
 export interface BackupInfo { file: string; name: string; size: number; created: number; auto: boolean }
@@ -127,13 +140,19 @@ export interface FriendKitInfo {
   installer: string | null
   guide: string | null
   builtAt: number | null
+  /** bat: one-click installer for the official launcher. mrpack: modpack file for Prism Launcher, Modrinth App, CurseForge and others. */
+  kind: 'bat' | 'mrpack'
+  /** Mods from the server that players must have. */
+  serverMods: number
   modCount: number
   mods: { slug: string; title: string; kind: string; version: string }[]
 }
 
 export interface PaperVersions { versions: string[]; latest: string }
+export interface SoftwareStatus { loader: Loader; mcVersion: string; latest: string | null; builds: { id: string; channel: string; time: string | null }[] }
 export interface SetupOptions {
   mode: 'new' | 'existing'
+  loader: Loader
   dir: string
   serverName: string
   mcVersion: string
@@ -166,9 +185,9 @@ export interface NexusApi {
   openExternal(url: string): Promise<void>
   copyText(text: string): Promise<void>
   // setup
-  paperVersions(): Promise<PaperVersions>
+  mcVersions(loader: Loader): Promise<PaperVersions>
   findJava(minimum: number): Promise<JavaInfo | null>
-  javaMinimum(mcVersion: string): Promise<number>
+  javaMinimum(mcVersion: string, loader: Loader): Promise<number>
   installJava(major: number): Promise<void>
   inspectFolder(dir: string): Promise<ServerInfo>
   checkWorld(source: string): Promise<WorldCheck>
@@ -200,8 +219,8 @@ export interface NexusApi {
   installGuard(): Promise<string[]>
   unlockName(name: string): Promise<void>
   // software
-  paperBuilds(version: string): Promise<{ id: number; channel: string; time: string }[]>
-  updatePaper(version: string): Promise<{ build: number; jar: string }>
+  software(mcVersion: string): Promise<SoftwareStatus>
+  installSoftware(mcVersion: string): Promise<string>
   // plugins
   plugins(): Promise<PluginInfo[]>
   searchPlugins(query: string): Promise<ModrinthHit[]>

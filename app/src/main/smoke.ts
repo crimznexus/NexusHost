@@ -23,11 +23,11 @@ app.whenReady().then(async () => {
   const lines: string[] = []
   server.on('log', (ls: { text: string }[]) => lines.push(...ls.map((l) => l.text)))
   try {
-    await step('paperVersions', async () => { const v = await api.paperVersions(); return `latest ${v.latest}, ${v.versions.length} versions` })
+    await step('paperVersions', async () => { const v = await api.mcVersions('paper'); return `latest ${v.latest}, ${v.versions.length} versions` })
     await step('inspectFolder', async () => { const i = await api.inspectFolder(dir); return `jar ${i.jar}, mc ${i.mcVersion}, eula ${i.eulaAccepted}, online ${i.onlineMode}` })
     await step('runSetup existing', async () => {
       const i = await api.inspectFolder(dir)
-      await api.runSetup({ mode: 'existing', dir, serverName: 'Smoke Server', mcVersion: i.mcVersion!, memoryGB: 3, offlineMode: false, plugins: [], acceptEula: true, motd: '', maxPlayers: 10 })
+      await api.runSetup({ mode: 'existing', loader: 'paper', dir, serverName: 'Smoke Server', mcVersion: i.mcVersion!, memoryGB: 3, offlineMode: false, plugins: [], acceptEula: true, motd: '', maxPlayers: 10 })
       const s = await api.getSettings(); return `java ${s.javaPath}, flags ${s.javaFlags.length}`
     })
     await step('properties roundtrip', async () => { await api.setProperties({ motd: 'Smoke §test ü' }); const p = await api.getProperties(); if (p.motd !== 'Smoke §test ü') throw new Error(`motd came back as ${p.motd}`); return `port ${p['server-port']}` })

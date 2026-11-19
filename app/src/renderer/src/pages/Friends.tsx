@@ -2,6 +2,7 @@ import { Copy, ExternalLink, FileDown, FolderOpen, Hammer, RefreshCw, Shield, Sh
 import { api } from '@/lib/api'
 import { fmtAgo, useLoad, useStore } from '@/lib/store'
 import { ActionButton, Banner, Button, Panel, Progress } from '@/components/ui'
+import { LOADER_LABEL } from '@/lib/loaders'
 
 export function FriendsPage() {
   const { settings, progress, act, toast } = useStore()
@@ -10,7 +11,7 @@ export function FriendsPage() {
   const t = ts.data
   const p = progress.friendkit
   const building = p && !p.finished
-  const joinText = t?.ip ? `Join my Minecraft server "${settings?.serverName}":\n1. Install Tailscale (https://tailscale.com/download) and sign in with your own account.\n2. Accept the share invite I send you.\n3. Run the mod installer I send you (optional), then add the server ${t.ip} in Multiplayer.` : ''
+  const joinText = t?.ip ? `Join my Minecraft server "${settings?.serverName}":\n1. Install Tailscale (https://tailscale.com/download) and sign in with your own account.\n2. Accept the share invite I send you.\n3. ${settings?.loader === 'neoforge' || settings?.loader === 'forge' ? `Import the modpack I send you into Prism Launcher or the Modrinth App (needed: the server uses ${LOADER_LABEL[settings.loader]} mods)` : 'Run the mod installer I send you (optional)'}, then add the server ${t.ip} in Multiplayer.` : ''
 
   return (
     <>
@@ -52,10 +53,12 @@ export function FriendsPage() {
         </Panel>
       </div>
 
-      <Panel title="4. One-click mod installer" sub={`A .bat file friends double-click. It installs Fabric and ${kit.data?.modCount ?? 'the'} client mods (minimap, performance, shaders, voice chat) for the official launcher and adds your server to their list.`}
+      <Panel title={kit.data?.kind === 'mrpack' ? '4. Modpack for friends' : '4. One-click mod installer'} sub={kit.data?.kind === 'mrpack'
+        ? `A .mrpack modpack friends import into Prism Launcher, the Modrinth App or CurseForge. It has ${LOADER_LABEL[settings?.loader ?? 'neoforge']}, the mods your server needs players to have, and the client mods (minimap, performance, shaders) that have a ${LOADER_LABEL[settings?.loader ?? 'neoforge']} version.`
+        : `A .bat file friends double-click. It installs Fabric and ${kit.data?.modCount ?? 'the'} client mods (minimap, performance, shaders, voice chat) for the official launcher${settings?.loader === 'fabric' ? ', plus the server mods players need,' : ''} and adds your server to their list.`}
         actions={<>
-          <ActionButton variant="primary" icon={Hammer} disabled={!t?.ip || !!building} onAction={async () => { const k = await act(() => api.buildFriendKit(false), 'Installer built'); if (k) { kit.setData(k); if (k.dir) api.openPath(k.dir) } }}>Build installer</ActionButton>
-          <ActionButton icon={RefreshCw} disabled={!t?.ip || !!building} onAction={async () => { const k = await act(() => api.buildFriendKit(true), 'Mod list refreshed and installer built'); if (k) kit.setData(k) }}>Refresh mod versions</ActionButton>
+          <ActionButton variant="primary" icon={Hammer} disabled={!t?.ip || !!building} onAction={async () => { const k = await act(() => api.buildFriendKit(false), kit.data?.kind === 'mrpack' ? 'Modpack built' : 'Installer built'); if (k) { kit.setData(k); if (k.dir) api.openPath(k.dir) } }}>{kit.data?.kind === 'mrpack' ? 'Build modpack' : 'Build installer'}</ActionButton>
+          <ActionButton icon={RefreshCw} disabled={!t?.ip || !!building} onAction={async () => { const k = await act(() => api.buildFriendKit(true), kit.data?.kind === 'mrpack' ? 'Mod list refreshed and modpack built' : 'Mod list refreshed and installer built'); if (k) kit.setData(k) }}>Refresh mod versions</ActionButton>
         </>}>
         {!t?.ip && <Banner tone="warn">Connect Tailscale first: the installer contains your server address.</Banner>}
         {building && <div className="stack"><span className="small muted">{p.label}</span><Progress value={null} /></div>}
@@ -63,7 +66,8 @@ export function FriendsPage() {
           <div className="cluster">
             <span className="small muted">Built {fmtAgo(kit.data.builtAt!)}.</span>
             <Button icon={FolderOpen} onClick={() => api.openPath(kit.data!.dir)}>Open folder</Button>
-            <Button icon={FileDown} onClick={() => api.openPath(kit.data!.installer!)}>Show installer</Button>
+            <Button icon={FileDown} onClick={() => api.openPath(kit.data!.installer!)}>{kit.data.kind === 'mrpack' ? 'Show modpack' : 'Show installer'}</Button>
+            {kit.data.serverMods > 0 && <span className="tag">{kit.data.serverMods} from your server</span>}
           </div>
         )}
         {kit.data && kit.data.mods.length > 0 && (

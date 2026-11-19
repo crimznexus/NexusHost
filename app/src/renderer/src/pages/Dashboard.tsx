@@ -3,6 +3,7 @@ import { Archive, Copy, Globe2, RotateCcw, SquareTerminal, Users } from 'lucide-
 import type { PageProps } from '@/App'
 import { api } from '@/lib/api'
 import { fmtDuration, useLoad, useStore } from '@/lib/store'
+import { LOADER_LABEL } from '@/lib/loaders'
 import { ActionButton, Avatar, Banner, Beacon, Button, Empty, Panel, Stat, stateLabel } from '@/components/ui'
 
 export function Dashboard({ go }: PageProps) {
@@ -39,7 +40,7 @@ export function Dashboard({ go }: PageProps) {
               {addrText
                 ? <span className="address"><span className="truncate">{addrText}</span><Button size="sm" variant="ghost" icon={Copy} label="Copy address" onClick={() => act(() => api.copyText(addrText), 'Address copied')} /></span>
                 : <span className="small muted">No Tailscale address yet</span>}
-              <span className="tag">Paper {info.data?.mcVersion ?? settings?.mcVersion}</span>
+              <span className="tag">{LOADER_LABEL[info.data?.loader ?? settings?.loader ?? 'paper']} {info.data?.mcVersion ?? settings?.mcVersion}</span>
               {info.data && !info.data.onlineMode && <span className="tag tag--warn">Offline mode</span>}
             </div>
           </div>

@@ -5,7 +5,7 @@ import { app, BrowserWindow, clipboard, dialog, shell } from 'electron'
 import type { NexusApi, NexusEvent } from '@shared/types'
 import { activateServer, forgetServer, getSettings, renameSaved, requireServerDir, saveSettings } from './settings'
 import { server } from './server'
-import { findPaperJar, installPaper, paperBuilds, paperVersionMeta, paperVersions } from './paper'
+import { LOADER_LABEL, detectLoader, installLoader, javaRequirement, mcVersions, software } from './loaders'
 import { findJava, installJava } from './java'
 import { readProperties, writeProperties } from './properties'
 import { getPlayers, playerAction, setWhitelist, switchMode } from './players'
@@ -39,9 +39,9 @@ export const api: NexusApi = {
   async openExternal(url) { if (/^https:\/\//.test(url)) await shell.openExternal(url) },
   async copyText(text) { clipboard.writeText(text) },
 
-  async paperVersions() { return paperVersions() },
+  async mcVersions(loader) { return mcVersions(loader) },
   async findJava(min) { return findJava(min) },
-  async javaMinimum(v) { return (await paperVersionMeta(v)).javaMin },
+  async javaMinimum(v, loader) { return (await javaRequirement(loader, v)).javaMin },
   async installJava(major) { return installJava(major) },
   async inspectFolder(dir) { return inspectFolder(dir) },
   async checkWorld(src) { return worlds.checkWorldSource(src) },
@@ -72,8 +72,10 @@ export const api: NexusApi = {
     const dir = requireServerDir()
     const report = await switchMode(dir, offline, renames)
     // SkinsRestorer brings skins back in offline mode; NexusGuard stops players joining under each other's names
-    if (offline) {
-      try { await installPlugin(dir, 'skinsrestorer', getSettings().mcVersion); report.push('Installed SkinsRestorer so skins still show.') } catch { report.push('Could not install SkinsRestorer; skins will be default.') }
+    if (offline && getSettings().loader !== 'paper') {
+      report.push('NexusGuard and SkinsRestorer are Paper plugins, so they were not added. Anyone on the whitelist can now join under any name, so only whitelist people you trust.')
+    } else if (offline) {
+      try { await installPlugin(dir, 'paper', 'skinsrestorer', getSettings().mcVersion); report.push('Installed SkinsRestorer so skins still show.') } catch { report.push('Could not install SkinsRestorer; skins will be default.') }
       report.push(...(await installGuard(dir, (await getPlayers(dir, [])).whitelist)))
     } else if (existsSync(path.join(dir, 'plugins', 'NexusGuard.jar'))) {
       await fsp.mkdir(path.join(dir, 'plugins-disabled'), { recursive: true })
@@ -112,31 +114,38 @@ export const api: NexusApi = {
   async players() { return getPlayers(requireServerDir(), server.stats.players) },
   async playerAction(action, name, reason) { await playerAction(requireServerDir(), server, action, name, reason) },
   async setWhitelistEnabled(on) { await setWhitelist(requireServerDir(), server, on) },
-  async guard() { return guardInfo(requireServerDir()) },
-  async installGuard() { const dir = requireServerDir(); return installGuard(dir, (await getPlayers(dir, [])).whitelist) },
+  async guard() { return getSettings().loader === 'paper' ? guardInfo(requireServerDir()) : { supported: false, installed: false, locks: [] } },
+  async installGuard() {
+    if (getSettings().loader !== 'paper') throw new Error('NexusGuard is a Paper plugin, so it only runs on Paper servers.')
+    const dir = requireServerDir(); return installGuard(dir, (await getPlayers(dir, [])).whitelist)
+  },
   async unlockName(name) { await unlock(requireServerDir(), name) },
 
-  async paperBuilds(v) { return (await paperBuilds(v)).slice(0, 15).map((b) => ({ id: b.id, channel: b.channel, time: b.time })) },
-  async updatePaper(version) {
+  async software(v) { return software(getSettings().loader, v) },
+  async installSoftware(version) {
     mustBeStopped('changing the server software')
     const dir = requireServerDir()
-    const cur = findPaperJar(dir)
-    if (cur?.version && cur.version !== version) await worlds.createBackup(dir, server).catch(() => {})
-    const r = await installPaper(dir, version, (d, t) => emit({ type: 'progress', progress: { task: 'paper', label: `Downloading Paper ${version}`, done: d, total: t } }))
-    const meta = await paperVersionMeta(version)
+    const loader = getSettings().loader
+    const name = LOADER_LABEL[loader]
+    const meta = await javaRequirement(loader, version)
     const java = await findJava(meta.javaMin)
-    saveSettings({ mcVersion: version, javaFlags: meta.flags, ...(java ? { javaPath: java.path } : {}) })
-    emit({ type: 'progress', progress: { task: 'paper', label: 'Done', done: 1, total: 1, finished: true } })
-    if (!java) throw new Error(`Paper ${version} needs Java ${meta.javaMin}. Install it from Settings.`)
-    return r
+    if (!java) throw new Error(`Minecraft ${version} needs Java ${meta.javaMin}. Install it from Settings.`)
+    const cur = detectLoader(dir)
+    if (cur?.mcVersion && cur.mcVersion !== version) await worlds.createBackup(dir, server).catch(() => {})
+    const progress = (label: string, done = 0, total = 0) => emit({ type: 'progress', progress: { task: 'paper', label, done, total } })
+    try {
+      const v = await installLoader(dir, loader, version, java.path, progress)
+      saveSettings({ mcVersion: version, javaFlags: meta.flags, javaPath: java.path })
+      return `${name} ${loader === 'paper' ? 'build ' : ''}${v}`
+    } finally { emit({ type: 'progress', progress: { task: 'paper', label: 'Done', done: 1, total: 1, finished: true } }) }
   },
 
-  async plugins() { const s = getSettings(); return listPlugins(requireServerDir(), s.mcVersion, true) },
-  async searchPlugins(q) { return searchPlugins(q, getSettings().mcVersion) },
-  async installPlugin(slug) { return installPlugin(requireServerDir(), slug, getSettings().mcVersion) },
-  async updatePlugin(file) { mustBeStopped('updating plugins'); return updatePlugin(requireServerDir(), file, getSettings().mcVersion) },
-  async setPluginEnabled(file, enabled) { mustBeStopped('turning plugins on or off'); await setPluginEnabled(requireServerDir(), file, enabled) },
-  async removePlugin(file) { mustBeStopped('removing plugins'); await removePlugin(requireServerDir(), file) },
+  async plugins() { const s = getSettings(); return listPlugins(requireServerDir(), s.loader, s.mcVersion, true) },
+  async searchPlugins(q) { const s = getSettings(); return searchPlugins(q, s.mcVersion, s.loader) },
+  async installPlugin(slug) { const s = getSettings(); return installPlugin(requireServerDir(), s.loader, slug, s.mcVersion) },
+  async updatePlugin(file) { mustBeStopped('updating plugins and mods'); const s = getSettings(); return updatePlugin(requireServerDir(), s.loader, file, s.mcVersion) },
+  async setPluginEnabled(file, enabled) { mustBeStopped('turning plugins and mods on or off'); await setPluginEnabled(requireServerDir(), getSettings().loader, file, enabled) },
+  async removePlugin(file) { mustBeStopped('removing plugins and mods'); await removePlugin(requireServerDir(), getSettings().loader, file) },
 
   async worldInfo() { return worlds.worldInfo(requireServerDir()) },
   async importWorld(src) { await worlds.importWorld(requireServerDir(), server, src) },
@@ -163,14 +172,14 @@ export const api: NexusApi = {
 
   async tailscale() { return tailscaleInfo() },
   async setupFirewall() { return setupFirewall(requireServerDir()) },
-  async friendKit() { return friendKitInfo(getSettings().mcVersion) },
+  async friendKit() { const s = getSettings(); return friendKitInfo(s.mcVersion, s.loader) },
   async buildFriendKit(refresh) {
     const s = getSettings()
     const ts = await tailscaleInfo()
     if (!ts.ip) throw new Error('Tailscale is not connected on this PC, so there is no address to give friends.')
     try {
       return await buildFriendKit({
-        serverDir: requireServerDir(), serverName: s.serverName, mcVersion: s.mcVersion, dataVersion: DATA_VERSIONS[s.mcVersion] ?? 0, host: ts.ip, refresh,
+        serverDir: requireServerDir(), serverName: s.serverName, loader: s.loader, mcVersion: s.mcVersion, dataVersion: DATA_VERSIONS[s.mcVersion] ?? 0, host: ts.ip, refresh,
         onProgress: (label) => emit({ type: 'progress', progress: { task: 'friendkit', label, done: 0, total: 0 } })
       })
     } finally { emit({ type: 'progress', progress: { task: 'friendkit', label: 'Done', done: 1, total: 1, finished: true } }) }

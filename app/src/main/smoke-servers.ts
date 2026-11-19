@@ -23,7 +23,7 @@ app.whenReady().then(async () => {
     })
     let secondId = ''
     await step('add second server (existing folder)', async () => {
-      await api.runSetup({ mode: 'existing', dir: dir2, serverName: 'Second Server', mcVersion: '26.3', memoryGB: 3, offlineMode: false, plugins: [], acceptEula: true, motd: '', maxPlayers: 10 })
+      await api.runSetup({ mode: 'existing', loader: 'paper', dir: dir2, serverName: 'Second Server', mcVersion: '26.3', memoryGB: 3, offlineMode: false, plugins: [], acceptEula: true, motd: '', maxPlayers: 10 })
       const s = await api.getSettings()
       secondId = s.activeServerId!
       if (s.servers.length !== 2 || secondId === firstId) throw new Error(`servers=${s.servers.length}`)
@@ -39,7 +39,7 @@ app.whenReady().then(async () => {
     })
     await step('server info follows the switch', async () => { const i = await api.serverInfo(); return `${i.dir} jar ${i.jar}` })
     await step('re-adding the same folder does not duplicate', async () => {
-      await api.runSetup({ mode: 'existing', dir: dir2, serverName: 'Second Server', mcVersion: '26.3', memoryGB: 5, offlineMode: false, plugins: [], acceptEula: true, motd: '', maxPlayers: 10 })
+      await api.runSetup({ mode: 'existing', loader: 'paper', dir: dir2, serverName: 'Second Server', mcVersion: '26.3', memoryGB: 5, offlineMode: false, plugins: [], acceptEula: true, motd: '', maxPlayers: 10 })
       const s = await api.getSettings(); if (s.servers.length !== 2) throw new Error(`servers=${s.servers.length}`); return `still 2, active ${s.serverName}`
     })
     await step('rename inactive', async () => { const s = await api.renameServer(firstId, 'Renamed First'); return s.servers.find((x) => x.id === firstId)!.name })

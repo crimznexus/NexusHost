@@ -2,7 +2,7 @@ import { existsSync, promises as fsp, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { nativeImage } from 'electron'
 import type { ServerInfo, SetupOptions, TaskProgress } from '@shared/types'
-import { findPaperJar, installPaper, paperVersionMeta } from './paper'
+import { LOADER_LABEL, contentDir, detectLoader, installLoader, javaRequirement } from './loaders'
 import { readProperties, writeProperties } from './properties'
 import { installPlugin } from './plugins'
 import { findJava } from './java'
@@ -13,12 +13,13 @@ import { server } from './server'
 
 export async function inspectFolder(dir: string): Promise<ServerInfo> {
   const exists = existsSync(dir)
-  const jar = exists ? findPaperJar(dir) : null
+  const sw = exists ? detectLoader(dir) : null
   const props = exists ? await readProperties(dir) : {}
   const eula = path.join(dir, 'eula.txt')
   const level = props['level-name'] || 'world'
   return {
-    dir, exists, jar: jar?.jar ?? null, paperBuild: jar?.build ?? null, mcVersion: jar?.version ?? null,
+    dir, exists, jar: sw?.label ?? null, loader: sw?.loader ?? null, loaderVersion: sw?.loaderVersion ?? null,
+    paperBuild: sw?.loader === 'paper' && sw.loaderVersion ? Number(sw.loaderVersion) : null, mcVersion: sw?.mcVersion ?? null,
     eulaAccepted: existsSync(eula) && /^\s*eula\s*=\s*true/im.test(readFileSync(eula, 'utf8')),
     onlineMode: props['online-mode'] !== 'false', levelName: level, port: Number(props['server-port'] || 25565),
     hasWorld: existsSync(path.join(dir, level, 'level.dat'))
@@ -52,23 +53,27 @@ export async function runSetup(o: SetupOptions, progress: (p: TaskProgress) => v
   const step = (label: string) => progress({ task: 'setup', label, done: n++, total: steps })
   await fsp.mkdir(o.dir, { recursive: true })
   const existing = await inspectFolder(o.dir)
+  // an existing folder keeps the software it already has
+  const loader = o.mode === 'existing' && existing.loader ? existing.loader : o.loader
+  const name = LOADER_LABEL[loader]
 
   step('Checking Java')
-  const meta = await paperVersionMeta(o.mcVersion)
+  const meta = await javaRequirement(loader, o.mcVersion)
   const java = await findJava(meta.javaMin)
   if (!java) throw new Error(`Java ${meta.javaMin} or newer is needed. Use "Install Java" and try again.`)
 
   if (o.mode === 'new' || !existing.jar) {
-    step(`Downloading Paper ${o.mcVersion}`)
-    await installPaper(o.dir, o.mcVersion, (d, t) => progress({ task: 'setup', label: `Downloading Paper ${o.mcVersion} (${Math.round(d / 1048576)} / ${Math.round(t / 1048576)} MB)`, done: n - 1, total: steps }))
+    step(`Installing ${name} ${o.mcVersion}`)
+    await installLoader(o.dir, loader, o.mcVersion, java.path, (label) => progress({ task: 'setup', label, done: n - 1, total: steps }))
   }
 
   if (o.mode === 'new') {
-    step('Installing plugins')
+    const kind = loader === 'paper' ? 'plugin' : 'mod'
+    step(`Installing ${kind}s`)
     const failed: string[] = []
-    for (const slug of o.plugins) {
-      progress({ task: 'setup', label: `Installing plugin: ${slug}`, done: n - 1, total: steps })
-      try { await installPlugin(o.dir, slug, o.mcVersion) } catch { failed.push(slug) }
+    for (const slug of contentDir(loader) ? o.plugins : []) {
+      progress({ task: 'setup', label: `Installing ${kind}: ${slug}`, done: n - 1, total: steps })
+      try { await installPlugin(o.dir, loader, slug, o.mcVersion) } catch { failed.push(slug) }
     }
     if (failed.length) progress({ task: 'setup', label: `Skipped (no ${o.mcVersion} version yet): ${failed.join(', ')}`, done: n - 1, total: steps })
 
@@ -94,9 +99,9 @@ export async function runSetup(o: SetupOptions, progress: (p: TaskProgress) => v
   if (o.acceptEula) await acceptEula(o.dir)
 
   step('Saving')
-  const jar = findPaperJar(o.dir)
+  const sw = detectLoader(o.dir)
   // activeServerId null: becomes a new list entry (or the existing entry for this folder), not a rename of the current one
-  saveSettings({ activeServerId: null, serverDir: o.dir, serverName: o.serverName, mcVersion: jar?.version ?? o.mcVersion, memoryGB: o.memoryGB, javaPath: java.path, javaFlags: meta.flags })
+  saveSettings({ activeServerId: null, serverDir: o.dir, serverName: o.serverName, loader, mcVersion: sw?.mcVersion ?? o.mcVersion, memoryGB: o.memoryGB, javaPath: java.path, javaFlags: meta.flags })
   progress({ task: 'setup', label: 'Done', done: steps, total: steps, finished: true })
 }
 
